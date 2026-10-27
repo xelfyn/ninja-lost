@@ -3,11 +3,11 @@
   "project": "ninja-lost",
   "repository": "xelfyn/ninja-lost",
   "batch": "MB01",
-  "source_intake_status": "not_imported",
+  "source_intake_status": "server_text_imported_runtime_unverified",
   "candidate": {
     "repository": "YoshCasaster/Ninjasage-PrivateServer-community",
     "commit": "a53f074aaa0690398db947205956ffb97d5671aa",
-    "component_rights_review": "required_before_import",
+    "component_rights_review": "root MIT notice preserved for server text; separate client/assets NOT imported",
     "relationship_to_ninja_zero_or_kotagames": "unverified"
   },
   "ci_policy": {
