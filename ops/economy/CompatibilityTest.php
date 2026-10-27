@@ -24,16 +24,24 @@ final class CompatibilityTest extends TestCase
     public function test_signed_legacy_snapshot_is_rejected_on_actual_hydration():void
     {
         $this->actingAs(Fixture::actor(99));
-        // Test-only registration simulates a previously registered component identity.
-        // Production does not register this alias. Without it lookup rejects before hydration.
+        // Test-only alias simulates a formerly registered component; no alias is published.
         LivewireTest::component('qa-legacy-world-chat',App\Filament\Pages\WorldChat::class);
         $component=app('livewire')->new('qa-legacy-world-chat');
         $handler=app(Livewire\Mechanisms\HandleComponents\HandleComponents::class);
-        $snapshot=$handler->snapshot($component); $this->assertNotEmpty($snapshot['checksum']);
+        $context=new Livewire\Mechanisms\HandleComponents\ComponentContext($component);
+        $context->addMemo('release',Livewire\Features\SupportReleaseTokens\ReleaseToken::generate($component));
+        $snapshot=$handler->snapshot($component,$context);
+        $this->assertNotEmpty($snapshot['checksum']);
+        // Verify the preceding framework checks independently. The expected 403 must be ours.
+        Livewire\Mechanisms\HandleComponents\Checksum::verify($snapshot);
+        Livewire\Features\SupportReleaseTokens\ReleaseToken::verify($snapshot);
         try {
             $handler->update($snapshot,[],[['method'=>'$refresh','params'=>[]]]);
             $this->fail('A valid old identity must not escape quarantine during hydration');
-        } catch (Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { $this->assertSame(403,$e->getStatusCode()); }
+        } catch (Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            $this->assertSame(403,$e->getStatusCode());
+            $this->assertStringContainsString('dikarantina',$e->getMessage());
+        }
     }
     public function test_locked_staff_identity_cannot_be_changed_by_client():void
     {
