@@ -1,0 +1,71 @@
+name: Ninja Lost MB02 portal and rewards
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: mb02-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  portal-rewards:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: ninja_lost_eval
+        ports: ['127.0.0.1:3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_NAME: Ninja Lost
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      APP_URL: http://127.0.0.1:8000
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_DATABASE: ninja_lost_eval
+      DB_USERNAME: root
+      DB_PASSWORD: ''
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: log
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, pdo_mysql, bcmath, gd, zip
+          tools: composer:v2
+          coverage: none
+      - name: Ephemeral key
+        run: |
+          key="base64:$(openssl rand -base64 32)"
+          echo "::add-mask::$key"
+          echo "APP_KEY=$key" >> "$GITHUB_ENV"
+      - name: Install locked application and migrate isolated database
+        run: |
+          bash ops/runtime/setup-ci.sh > "$RUNNER_TEMP/mb02-setup.log" 2>&1 || { tail -n 100 "$RUNNER_TEMP/mb02-setup.log"; exit 1; }
+          composer dump-autoload --optimize --strict-psr --no-scripts --no-plugins --no-interaction
+      - name: Portal authorization and transactional integration
+        run: vendor/bin/phpunit --configuration ops/rewards/phpunit.xml --testdox
+      - name: Real multi-process MySQL race conditions
+        run: php ops/rewards/race.php
+      - name: Real browser login claim persistence and logout
+        run: bash ops/rewards/browser.sh
+      - name: Evidence scope
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          printf '## MB02\n\nResult: %s\nRevision: `%s`\n\nIsolated MySQL, PHP integration, concurrent PHP workers and Chromium. No real users, public deployment, Discord, APK or 60 FPS claim. No artifact upload or persistent cache.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
