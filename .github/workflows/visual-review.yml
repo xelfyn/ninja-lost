@@ -1,0 +1,70 @@
+name: Ninja Lost requested visual review
+on:
+  workflow_dispatch:
+  push:
+    branches: [visual/g8c-review]
+permissions:
+  contents: read
+concurrency:
+  group: requested-visual-review
+  cancel-in-progress: false
+jobs:
+  capture:
+    if: github.repository == 'xelfyn/ninja-lost' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: ninja_lost_eval
+        ports: ['127.0.0.1:3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_NAME: Ninja Lost
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      APP_URL: http://127.0.0.1:8000
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_DATABASE: ninja_lost_eval
+      DB_USERNAME: root
+      DB_PASSWORD: ''
+      SESSION_DRIVER: array
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: log
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, pdo_mysql, bcmath, gd, zip
+          tools: composer:v2
+          coverage: none
+      - name: Ephemeral application key
+        run: |
+          key="base64:$(openssl rand -base64 32)"
+          echo "::add-mask::$key"
+          echo "APP_KEY=$key" >> "$GITHUB_ENV"
+      - name: Locked runtime and isolated database
+        run: bash ops/runtime/setup-ci.sh
+      - name: Interact with real application and capture bounded synthetic screenshots
+        run: bash ops/visual/capture.sh
+      - name: Export requested visuals only, one-day retention
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ninja-lost-visual-${{ github.sha }}
+          path: ${{ runner.temp }}/ninja-lost-visual/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 9
+      - name: Scope
+        if: always()
+        run: echo 'User-requested screenshot exception only; max 1 MiB, 1 day, synthetic fixtures. Routine PR/main CI has no artifact upload. No live deployment or design approval.' >> "$GITHUB_STEP_SUMMARY"
