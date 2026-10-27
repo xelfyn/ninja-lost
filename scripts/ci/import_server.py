@@ -16,7 +16,7 @@ def selected(path: str) -> bool:
     p = PurePosixPath(path)
     if p.is_absolute() or '..' in p.parts:
         return False
-    return path in EXACT or (path.startswith(PREFIXES) and p.suffix in {'.php', '.md', '.txt'})
+    return path in EXACT or (path.startswith(PREFIXES) and (p.suffix in {'.php', '.md', '.txt'} or p.name.upper() in {'LICENSE', 'LICENCE', 'NOTICE', 'COPYING'}))
 
 
 def validate_payload(path: str, data: bytes) -> None:
@@ -43,14 +43,14 @@ def main() -> None:
         git(src, 'fetch', '--quiet', '--no-tags', '--depth=1', '--filter=blob:none', 'origin', COMMIT)
         if git(src, 'rev-parse', 'FETCH_HEAD') != COMMIT:
             raise SystemExit('Upstream revision mismatch')
-        tree = git(src, 'ls-tree', '-rl', COMMIT)
+        tree = git(src, 'ls-tree', '-r', COMMIT)
         chosen = []
         for entry in tree.splitlines():
             meta, path = entry.split('\t', 1)
-            mode, kind, sha, size = meta.split()
+            mode, kind, sha = meta.split()
             group = path.split('/')[0]
-            totals = groups.setdefault(group, {'files':0,'bytes':0})
-            totals['files'] += 1; totals['bytes'] += int(size) if size.isdigit() else 0
+            totals = groups.setdefault(group, {'files':0,'bytes':None})
+            totals['files'] += 1
             if not selected(path):
                 continue
             if mode not in {'100644', '100755'} or kind != 'blob':
