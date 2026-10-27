@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 [[ "${CI:-}" == true && "${GITHUB_REPOSITORY:-}" == xelfyn/ninja-lost && "${DB_HOST:-}" == 127.0.0.1 && "${DB_DATABASE:-}" == ninja_lost_eval ]] || { echo 'Isolated evaluation runner required'; exit 1; }
-qa_root="$(mktemp -d "${RUNNER_TEMP:?}/nl-visual.XXXXXX")"
+# Preserve the existing fixture path contract instead of weakening its safety guard.
+qa_root="$(mktemp -d "${RUNNER_TEMP:?}/nl-economy-browser.XXXXXX")"
 trap 'rm -rf "$qa_root"' EXIT
 export NODE_PATH="$qa_root/node_modules" PLAYWRIGHT_BROWSERS_PATH="$qa_root/browsers"
 export NL_QA_STATE="$qa_root/g8-state.json" NL_BROWSER_PROOF_DIR="$qa_root/proof"
