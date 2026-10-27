@@ -1,19 +1,75 @@
 name: Ninja Lost economy integrity
 on:
   pull_request:
+    branches: [main]
   push:
     branches: [main]
 permissions:
   contents: read
 concurrency:
-  group: economy-integrity-${{ github.ref }}
+  group: economy-integrity-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
-  inventory:
+  integrity:
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: ninja_lost_eval
+        ports: ['127.0.0.1:3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_NAME: Ninja Lost
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      APP_URL: http://127.0.0.1:8000
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_DATABASE: ninja_lost_eval
+      DB_USERNAME: root
+      DB_PASSWORD: ''
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: log
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - run: python3 scripts/ci/economy_inventory.py
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, pdo_mysql, bcmath, gd, zip
+          tools: composer:v2
+          coverage: none
+      - name: Source inventory and syntax
+        run: |
+          python3 scripts/ci/economy_inventory.py
+          find app/Support/Economy app/Services/Rewards ops/economy -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Ephemeral application key
+        run: |
+          key="base64:$(openssl rand -base64 32)"
+          echo "::add-mask::$key"
+          echo "APP_KEY=$key" >> "$GITHUB_ENV"
+      - name: Install locked runtime and migrate isolated MySQL
+        run: |
+          bash ops/runtime/setup-ci.sh > "$RUNNER_TEMP/g8-setup.log" 2>&1 || { tail -n 100 "$RUNNER_TEMP/g8-setup.log"; exit 1; }
+          composer dump-autoload --optimize --strict-psr --no-scripts --no-plugins --no-interaction
+      - name: Staff and stale-state integration
+        run: vendor/bin/phpunit -c ops/economy/phpunit.xml --testdox
+      - name: Cross-adapter concurrent writers
+        run: php ops/economy/race.php
+      - name: Real staff to portal browser flow
+        run: bash ops/economy/browser.sh
+      - name: Scope
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          printf '## G8 economy integrity\n\nResult: %s\nRevision: `%s`\n\nEvaluation only. No public game endpoints, live Discord, asset imports, paid infrastructure or artifact upload. Legacy paths quarantined are NOT migrated gameplay.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
