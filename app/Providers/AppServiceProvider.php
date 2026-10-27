@@ -16,7 +16,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Register before Livewire boots its registry; boot() alone would be too late.
+        // Register before Livewire boots its hook registry.
         ComponentHookRegistry::register(EnforceEvaluationSurface::class);
     }
 
@@ -30,6 +30,10 @@ class AppServiceProvider extends ServiceProvider
             URL::forceRootUrl($origin);
             URL::forceScheme('https');
         }
+        // The pinned Laravel 12 kernel omits automatic console-event routing in
+        // APP_ENV=testing. Quarantine must also cover that supported evaluation mode.
+        // Initialize the idempotent dispatcher before any Artisan instance is created.
+        $this->app->make(Kernel::class)->rerouteSymfonyCommandEvents();
         Event::listen(CommandStarting::class, function (CommandStarting $event): void {
             $command = app(Kernel::class)->all()[$event->command] ?? null;
             if ($command && !EvaluationSurface::commandAllowed(get_class($command))) {
