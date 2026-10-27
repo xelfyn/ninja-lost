@@ -27,8 +27,10 @@ class PlayerShop extends Page
 
     public static function canAccess(): bool
     {
-        return app()->environment(['local', 'testing']) && auth()->check()
-            && in_array((int) DB::table('users')->where('id', auth()->id())->value('account_type'), [0, 1, 99], true);
+        if (!app()->environment(['local', 'testing']) || !auth()->check()) { return false; }
+        $role = DB::table('users')->where('id', auth()->id())->value('account_type');
+        // A deleted account is not a normal (zero-role) account.
+        return $role !== null && in_array((int) $role, [0, 1, 99], true);
     }
     public function mount(): void
     {
