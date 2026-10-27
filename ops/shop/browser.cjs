@@ -53,7 +53,7 @@ async function health(page, pathname, heading) {
 async function proof(page, name) {
   const folder = process.env.NL_BROWSER_PROOF_DIR; assert(folder); fs.mkdirSync(folder, { recursive: true });
   const file = path.join(folder, name + '.png'); await page.screenshot({ path: file, fullPage: false });
-  console.log(`PASS screenshot-${name}: sha256=${crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')}; ephemeral, not visually reviewed`);
+  console.log(`PASS screenshot-${name}: sha256=${crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')}; ephemeral, review only after exported`);
 }
 async function main() {
   const state = fixture('prepare'); prepared = true; await start(); browser = await chromium.launch({ headless: true });
@@ -72,7 +72,9 @@ async function main() {
   staff.once('dialog', d => d.accept());
   await staff.getByTestId(`offer-row-${offer}`).getByRole('button', { name: 'Aktifkan', exact: true }).click();
   await staff.getByTestId(`offer-row-${offer}`).getByRole('button', { name: 'Nonaktifkan', exact: true }).waitFor();
+  assert.equal(await staff.getByTestId(`offer-card-${offer}`).isVisible(), false);
   console.log('PASS shop-admin-create-review-activate: inactive offer not visible to player until explicit activation');
+  await staff.evaluate(() => window.scrollTo(0, 0));
   await proof(staff, 'shop-admin-desktop');
   await phone.reload({ waitUntil: 'networkidle' }); await phone.locator('#shop-offer').selectOption(String(offer));
   await phone.locator('#shop-quantity').fill('2'); await phone.getByTestId('shop-total').filter({ hasText: 'Total: 20 token + 10 gold.' }).waitFor();
@@ -96,10 +98,27 @@ async function main() {
   console.log('PASS shop-visible-insufficient-funds: validation shown and original purchase remains the only debit');
   await stop(); await start(); await phone.reload({ waitUntil: 'networkidle' });
   await health(phone, '/portal/shop', 'Toko Evaluasi'); fixture('verify'); assert.equal(await phone.getByTestId('shop-tokens').innerText(), '80');
-  await phone.setViewportSize({ width: 1440, height: 1000 }); await health(phone, '/portal/shop', 'Toko Evaluasi'); await proof(phone, 'shop-player-desktop');
-  await staff.setViewportSize({ width: 390, height: 844 }); await health(staff, '/admin/shop-offers', 'Penawaran Toko'); await proof(staff, 'shop-admin-mobile');
+  await phone.setViewportSize({ width: 1440, height: 1000 });
+  await phone.reload({ waitUntil: 'networkidle' }); await phone.evaluate(() => window.scrollTo(0, 0));
+  await health(phone, '/portal/shop', 'Toko Evaluasi'); await proof(phone, 'shop-player-desktop');
+  // Independent mobile context: do not mistake a desktop-sidebar resize transition for phone layout.
+  const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
+  const mobile = await mobileContext.newPage(); observe(mobile); await login(mobile, 'admin', admin);
+  await mobile.goto(`${BASE}/admin/shop-offers`, { waitUntil: 'networkidle' });
+  await health(mobile, '/admin/shop-offers', 'Penawaran Toko');
+  const card = mobile.getByTestId(`offer-card-${offer}`);
+  await card.waitFor(); assert.equal(await mobile.getByTestId(`offer-row-${offer}`).isVisible(), false);
+  await card.getByRole('button', { name: 'Nonaktifkan', exact: true }).click();
+  await card.getByRole('button', { name: 'Aktifkan', exact: true }).waitFor();
+  mobile.once('dialog', d => d.accept());
+  await card.getByRole('button', { name: 'Aktifkan', exact: true }).click();
+  await card.getByRole('button', { name: 'Nonaktifkan', exact: true }).waitFor();
+  fixture('verify');
+  await mobile.getByRole('heading', { name: 'Penawaran tersimpan', exact: true }).scrollIntoViewIfNeeded();
+  await health(mobile, '/admin/shop-offers', 'Penawaran Toko'); await proof(mobile, 'shop-admin-mobile');
+  console.log('PASS shop-mobile-card-controls: fresh phone context, visible card, pause and confirmed activate preserve original purchase');
   assert.deepEqual(errors, []); console.log('PASS shop-browser-health-and-restart: identities, nonblank, no overlays, no app console errors, no document overflow, balances and session persist');
-  await staffContext.close(); await playerContext.close();
+  await staffContext.close(); await playerContext.close(); await mobileContext.close();
 }
 main().catch(error => { console.error(error.stack); process.exitCode = 1; }).finally(async () => {
   if (browser) await browser.close(); await stop();
