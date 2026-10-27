@@ -13,6 +13,9 @@
 /public/css/filament/
 /public/js/filament/
 /public/fonts/filament/
+/.devcontainer/.runtime/
+/playwright-report/
+/test-results/
 *.sqlite
 *.sqlite3
 *.pem

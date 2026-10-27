@@ -1,0 +1,14 @@
+{
+  "name": "Ninja Lost isolated web preview",
+  "dockerComposeFile": "compose.yaml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/ninja-lost",
+  "remoteUser": "vscode",
+  "runServices": ["app", "db"],
+  "shutdownAction": "stopCompose",
+  "initializeCommand": "python3 ops/preview/environment.py",
+  "postCreateCommand": "bash ops/preview/setup.sh",
+  "forwardPorts": [8000],
+  "portsAttributes": {"8000": {"label": "Ninja Lost private admin preview", "onAutoForward": "notify"}},
+  "otherPortsAttributes": {"onAutoForward": "ignore"}
+}
