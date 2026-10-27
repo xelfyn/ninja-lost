@@ -1,0 +1,35 @@
+# Credentials and runtime state
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+*.log
+# Generated dependencies/builds, not canonical source
+vendor/
+node_modules/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+coverage/
+dist/
+build/
+artifacts/
+# Hold large or unreviewed assets during B00
+*.zip
+*.7z
+*.rar
+*.apk
+*.aab
+*.exe
+*.dll
+*.swf
+.DS_Store

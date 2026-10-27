@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "project": "ninja-lost",
+  "repository": "xelfyn/ninja-lost",
+  "batch": "B00",
+  "source_intake_status": "not_imported",
+  "candidate": {
+    "repository": "YoshCasaster/Ninjasage-PrivateServer-community",
+    "commit": "a53f074aaa0690398db947205956ffb97d5671aa",
+    "component_rights_review": "required_before_import",
+    "relationship_to_ninja_zero_or_kotagames": "unverified"
+  },
+  "ci_policy": {
+    "runner": "ubuntu-24.04",
+    "timeout_minutes": 3,
+    "artifact_upload": false,
+    "dependency_cache": false,
+    "automatic_deployment": false,
+    "automatic_codespaces": false,
+    "account_budget_verified": false
+  }
+}
