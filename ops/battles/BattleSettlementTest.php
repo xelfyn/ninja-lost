@@ -39,7 +39,9 @@ final class BattleSettlementTest extends TestCase
     }
     private function start(array $overrides = []): array
     {
-        return BattleFixture::service()->start($this->player, array_replace(['character_id' => $this->character->id, 'rule_id' => $this->rule['id'], 'request_key' => (string) Str::uuid()], $overrides));
+        // Start needs no test verdict provider. Exercise the actual default service,
+        // including its production denial without constructing a CI-only fixture there.
+        return app(BattleService::class)->start($this->player, array_replace(['character_id' => $this->character->id, 'rule_id' => $this->rule['id'], 'request_key' => (string) Str::uuid()], $overrides));
     }
     private function input(string $id, string $outcome = 'win'): array { return ['battle_id' => $id, 'proof' => ['qa_evidence' => $outcome]]; }
     private function finish(string $id, string $outcome = 'win'): array { return BattleFixture::service()->finish($this->player, $this->input($id, $outcome)); }
