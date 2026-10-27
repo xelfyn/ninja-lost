@@ -1,0 +1,31 @@
+name: Ninja Lost preview container
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: preview-container-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Check source and runner isolation
+        run: |
+          python3 -m unittest discover -s tests -v
+          python3 scripts/ci/check_repository.py
+      - name: Build and exercise actual preview containers
+        run: bash ops/preview/verify-container.sh
+      - name: Record scope, not a deployment claim
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          printf '## MB01 container verification\n\nResult: %s\n\nRevision: `%s`\n\nBuild, setup, integration, HTTP assets and restart checks are reported separately in the job log. No Codespace or public URL is created. No artifact upload, persistent CI cache, image push or production deployment.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
