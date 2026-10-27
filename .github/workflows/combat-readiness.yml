@@ -27,11 +27,11 @@ jobs:
           node --version
           node --check combat/evaluation/TurnSafeBattle.cjs
           node --check ops/combat/fixture.cjs
-          node --test ops/combat/combat.test.cjs
+          node --test ops/combat/*.test.cjs
       - name: Remove own ephemeral source and report boundary
         if: always()
         env:
           RESULT: ${{ job.status }}
         run: |
           rm -rf -- "$RUNNER_TEMP/nl-combat-source"
-          printf '## G8E combat readiness\nResult: %s\nSource revision: `%s`\nEvaluation of pinned upstream Battle/StatsCalc with explicit synthetic socket/clock/catalogue/identity adapters. No legacy DB writer, native client, assets, reward integration, public service or UI redesign. Known upstream defect reproductions are not positive safety tests. No artifact upload.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          printf '## G8E combat readiness\nResult: %s\nSource revision: `%s`\nEvaluation of pinned upstream Battle/StatsCalc. Includes accelerated-clock cases AND separate native-timer HTTP duel; identities/catalogue/RNG remain synthetic. No legacy DB writer, native client, assets, reward integration, public service or UI redesign. Known upstream defect reproductions are not positive safety tests. No artifact upload.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"

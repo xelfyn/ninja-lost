@@ -2,7 +2,6 @@
 """Fetch four pinned text files for isolated combat tests; never execute an intake hook."""
 import hashlib
 import json
-import os
 from pathlib import Path
 import sys
 import urllib.parse
@@ -42,7 +41,8 @@ def main():
         raise ValueError('Upstream tree incomplete; cannot assert source counts')
     extensions = ['.as', '.mxml', '.fla', '.as3proj', '.apk', '.swf', '.ane']
     counts = {ext: sum(1 for f in tree['tree'] if f['type'] == 'blob' and f['path'].lower().endswith(ext)) for ext in extensions}
-    report = {'commit': lock['commit'], 'tree_complete': True, 'entries': len(tree['tree']), 'extensions': counts, 'scope': 'Git tree metadata only; no binary downloads or execution'}
+    projects = [{k: f[k] for k in ['path', 'sha', 'size']} for f in tree['tree'] if f['type'] == 'blob' and f['path'].lower().endswith(('.fla', '.as3proj', '.mxml'))]
+    report = {'commit': lock['commit'], 'tree_complete': True, 'entries': len(tree['tree']), 'extensions': counts, 'source_project_candidates': projects, 'scope': 'Git tree metadata only; no binary downloads or execution'}
     (dest / 'tree-audit.json').write_text(json.dumps(report, indent=2) + '\n')
     print('CLIENT_TREE_AUDIT', json.dumps(report, sort_keys=True))
 

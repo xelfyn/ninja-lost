@@ -50,8 +50,8 @@ function load(name, dependencies, clock, random) {
   }, {filename: name, timeout: 1000});
   return module.exports;
 }
-function fixture({safe = true, scrolls = false, onEnd, level = 10} = {}) {
-  const clock = new Clock();
+function fixture({safe = true, scrolls = false, onEnd, level = 10, clock: providedClock} = {}) {
+  const clock = providedClock ?? new Clock();
   const skills = {
     skill_eval_hit: {skill_cp_cost: 20, skill_cooldown: 3, skill_damage: 70, skill_type: 2},
     skill_eval_stun: {skill_cp_cost: 30, skill_cooldown: 4, skill_damage: 10, skill_type: 1},
