@@ -5,4 +5,6 @@ cd "$(dirname "$0")/../.."
 python3 ops/preview/environment.py
 php artisan config:clear
 printf 'Development preview only. In Codespaces, verify port 8000 visibility is PRIVATE. Stop the codespace when finished.\n'
-exec php -S 0.0.0.0:8000 -t public vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php
+# Laravel's bundled router uses getcwd() as publicPath, not the -t argument.
+cd public
+exec php -S 0.0.0.0:8000 -t . ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php
