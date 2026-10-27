@@ -24,22 +24,31 @@ No background development is promised. If a provider account requires an action 
 through current tools, record that external gate precisely; do not manufacture a URL or
 mark the provider provisioned.
 
-## User-requested visual evidence, 28 October 2026
+## Current owner decision: function first, visual refactor deferred
 
-The user requested current visual design screenshots where available. A separate opt-in
-`visual-review.yml` workflow may export selected real Chromium screenshots of synthetic
-fixtures only: at most 1 MiB including manifest, retention one day, public repository and
-standard runner only. It is not triggered on ordinary main/PR activity. No billing/budget
-or repository visibility is changed. No real player data, credentials, traces or source
-ZIPs are exported. Quota/export failure must be reported; never bypass limits or substitute
-a generated mockup for a claimed screenshot. Download and inspect the actual images before
-claiming visual QA, and retain pending user acceptance independently. Review/export metadata
-must identify the exact source commit; app interaction tests remain required.
+On 28 October 2026, after inspecting actual screenshots, the owner rejected the current
+website design/layout as final and directed continuation of system functionality instead.
+Comprehensive UI/UX refactor is DEFERRED; current portal look is NOT canonical. Do not
+silently treat screenshot review or passed browser tests as visual approval. No new
+cosmetic work/screenshots unless required for a functional defect or explicitly reopened.
+See docs/UI_UX_REFACTOR.md. Private preview access and eventual visual acceptance in #2
+remain distinct. G8D makes no views/CSS/branding changes.
 
-## MB01 handoff
+## Prior user-requested visual evidence
 
-Technical checks: source provenance, application/MySQL integration, actual Chromium
-interactions, process persistence, actual Compose image/setup, HTTP assets and container
-restart. The user-facing private Codespaces session and human visual acceptance are
-separate acceptance items. Later isolated batches may proceed but must not pretend those
-items passed. Screenshots now requested are not themselves a deployed private URL.
+The prior request allowed a separate opt-in visual-review.yml workflow to export selected
+real Chromium screenshots of synthetic fixtures only: at most 1MiB including manifest,
+retention one day, public repository/standard runner only. It is not invoked for ordinary
+main/PR activity or function-only batches. No billing/budget/visibility change. No real
+player data, credentials, traces or source ZIP export. Report quota/export failures;
+never bypass limits or substitute generated mockups for claimed screenshots. Actual
+image inspection and user acceptance are separate. Preserve exact source identity.
+
+## Runtime/client boundaries
+
+MB01 checks cover isolated application/MySQL/Filament/browser/container behavior, not a
+user-accessible private URL. G8D adds a loopback diagnostic JSON client with real HTTP
+session/CSRF/retry/restart checks; it is not the inherited SWF/Android client, a native
+build, real combat, a public API or a replacement engine. Keep default/prod route gates,
+legacy quarantine and domain tests. Do not add a fake victory bypass to demonstrate play.
+Later isolated batches may proceed without falsely closing preview, rights or native-client gates.
