@@ -3,7 +3,22 @@
   "project": "ninja-lost",
   "repository": "xelfyn/ninja-lost",
   "batch": "MB01",
-  "source_intake_status": "server_text_imported_runtime_unverified",
+  "batch_status": "in_progress",
+  "source_intake_status": "server_text_imported",
+  "runtime_evidence": {
+    "tested_head": "721de238c0ccdf2d29dff17048bd12ce0e4a967a",
+    "workflow_run_id": 40515202905,
+    "conclusion": "success",
+    "scope": "Laravel/MySQL/Filament integration; 11 tests, not browser or gameplay",
+    "migrations_completed": 34,
+    "tool_tests": 14,
+    "browser_visual_verified": false,
+    "process_restart_persistence_verified": false,
+    "private_preview_available": false,
+    "gameplay_verified": false,
+    "discord_connected": false,
+    "android_built": false
+  },
   "candidate": {
     "repository": "YoshCasaster/Ninjasage-PrivateServer-community",
     "commit": "a53f074aaa0690398db947205956ffb97d5671aa",
