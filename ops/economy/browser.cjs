@@ -1,6 +1,5 @@
 'use strict';
-// Browser plugin not available on this CI runner. Use the existing pinned Playwright.
-// Flow: staff login -> deliberate grant -> independent SQL -> existing player session refresh -> retry -> mobile read.
+// No Browser plugin in CI. Reuse the pinned Playwright for the actual application flow.
 const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -62,7 +61,7 @@ async function main() {
   const playerContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
   const staff = await staffContext.newPage(), phone = await playerContext.newPage(); observe(staff); observe(phone);
   await login(phone, 'portal', player); await phone.goto(`${BASE}/portal/home`, { waitUntil: 'networkidle' });
-  await check(phone, '/portal/home', 'Portal Pemain');
+  await check(phone, '/portal/home', 'Portal Pemain'); assert.equal(await phone.getByTestId('nl-tokens').innerText(), '0');
   await login(staff, 'admin', admin); await staff.goto(`${BASE}/admin/staff-grants`, { waitUntil: 'networkidle' });
   await check(staff, '/admin/staff-grants', 'Staff Grants');
   await staff.locator('#staff-character').fill(String(state.character)); await staff.locator('#staff-quantity').fill('37');
@@ -73,16 +72,15 @@ async function main() {
   const sql = fixture('verify'); assert.equal(await staff.locator('#staff-receipt').innerText(), sql.receipt);
   assert.equal(await staff.locator('#staff-request-key').innerText(), requestKey);
   assert.equal(await staff.getByRole('button', { name: 'Terbitkan grant', exact: true }).count(), 0);
-  // Exercise the real server action again on the same mounted signed Livewire snapshot.
   await staff.evaluate(async () => {
-    const root = document.querySelector('[wire\\:id]');
+    const root = document.querySelector('#staff-request-key').closest('[wire\\:id]');
     await window.Livewire.find(root.getAttribute('wire:id')).$call('grant');
   });
   fixture('verify'); console.log('PASS real-staff-form-and-server-action-retry: exactly one grant, ledger and revision');
   await proof(staff, 'g8-staff-desktop');
   await phone.reload({ waitUntil: 'networkidle' }); await check(phone, '/portal/home', 'Portal Pemain');
   await phone.getByText('QA browser approved compensation', { exact: false }).waitFor();
-  assert((await phone.locator('body').innerText()).includes('37'));
+  assert.equal(await phone.getByTestId('nl-tokens').innerText(), '37');
   console.log('PASS already-open-player-session-refresh: staff grant visible from shared backend');
   await stop(); await start(); await phone.reload({ waitUntil: 'networkidle' });
   await check(phone, '/portal/home', 'Portal Pemain'); fixture('verify'); await proof(phone, 'g8-player-mobile');

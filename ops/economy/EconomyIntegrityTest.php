@@ -48,7 +48,7 @@ final class EconomyIntegrityTest extends TestCase
         try { $operation(); $this->fail('Expected validation rejection'); }
         catch (ValidationException $e) { $this->assertNotEmpty($e->errors()); }
     }
-    private function status(int $status,callable $operation):void
+    private function expectHttp(int $status,callable $operation):void
     {
         try { $operation(); $this->fail('Expected HTTP exception'); }
         catch (HttpExceptionInterface $e) { $this->assertSame($status,$e->getStatusCode()); }
@@ -81,9 +81,9 @@ final class EconomyIntegrityTest extends TestCase
     }
     public function test_role_is_reloaded_from_database_not_trusted_from_passed_model():void
     {
-        $this->status(403,fn()=> app(StaffGrantService::class)->grant($this->player,$this->character->id,$this->lines(),'Unauthorized attempt',(string)Str::uuid()));
+        $this->expectHttp(403,fn()=> app(StaffGrantService::class)->grant($this->player,$this->character->id,$this->lines(),'Unauthorized attempt',(string)Str::uuid()));
         DB::table('users')->where('id',$this->admin->id)->update(['account_type'=>0]); $this->assertSame(99,(int)$this->admin->account_type);
-        $this->status(403,fn()=> $this->grant()); $this->assertSame(0,(int)$this->player->fresh()->tokens);
+        $this->expectHttp(403,fn()=> $this->grant()); $this->assertSame(0,(int)$this->player->fresh()->tokens);
     }
     public function test_invalid_amount_reason_key_and_unknown_fields_do_not_write():void
     {
@@ -130,17 +130,13 @@ final class EconomyIntegrityTest extends TestCase
     }
     public function test_late_ledger_failure_rolls_back_grant_receipt_and_revision():void
     {
-        // Inject after the actual ledger INSERT, without DDL that would implicitly commit MySQL transactions.
         DB::listen(function (Illuminate\Database\Events\QueryExecuted $event):void {
-            if (str_starts_with(strtolower(ltrim($event->sql)),'insert into `nl_reward_ledger`')) {
-                throw new RuntimeException('QA late ledger failure');
-            }
+            if (str_starts_with(strtolower(ltrim($event->sql)),'insert into `nl_reward_ledger`')) { throw new RuntimeException('QA late ledger failure'); }
         });
         try { $this->grant(); $this->fail('Expected late fault'); }
         catch (RuntimeException $e) { $this->assertSame('QA late ledger failure',$e->getMessage()); }
         $this->assertSame(0,(int)$this->player->fresh()->tokens); $this->assertSame(0,StateRevision::current($this->player->id));
-        $this->assertSame(0,DB::table('nl_claims')->where('user_id',$this->player->id)->count());
-        $this->assertSame(0,DB::table('nl_reward_ledger')->count());
+        $this->assertSame(0,DB::table('nl_claims')->where('user_id',$this->player->id)->count()); $this->assertSame(0,DB::table('nl_reward_ledger')->count());
     }
     public function test_balance_and_revision_overflow_fail_without_receipt():void
     {
@@ -153,21 +149,19 @@ final class EconomyIntegrityTest extends TestCase
     {
         $old=$this->snapshot(); $campaign=Fixture::campaign($this->admin);
         app(RewardService::class)->starter($this->player,$this->character->id,$campaign,'default',(string)Str::uuid());
-        $this->status(409,fn()=> $this->save(['revision'=>$old['revision'],'equipment'=>['weapon'=>'']]));
+        $this->expectHttp(409,fn()=> $this->save(['revision'=>$old['revision'],'equipment'=>['weapon'=>'']]));
         $fresh=$this->snapshot(); $this->assertSame(5000,$fresh['tokens']); $this->assertSame(2500,$fresh['gold']); $this->assertSame(1,$fresh['revision']);
     }
     public function test_another_character_grant_invalidates_account_wide_snapshot():void
     {
         $old=$this->snapshot(); $other=Fixture::character($this->player); $this->grant(null,null,$other->id);
-        $this->status(409,fn()=> $this->save(['revision'=>$old['revision'],'equipment'=>['weapon'=>'']])); $this->assertSame(10,$this->snapshot()['tokens']);
+        $this->expectHttp(409,fn()=> $this->save(['revision'=>$old['revision'],'equipment'=>['weapon'=>'']])); $this->assertSame(10,$this->snapshot()['tokens']);
     }
     public function test_client_cannot_send_economy_or_role_snapshot_and_foreign_owner_is_rejected():void
     {
-        foreach (['tokens','gold','inventory','items','skills','pets','account_type','user_id'] as $key) {
-            $this->rejected(fn()=> $this->save(['revision'=>0,'equipment'=>['weapon'=>''],$key=>999]));
-        }
-        $other=Fixture::actor(); $this->status(404,fn()=> app(ClientStateService::class)->snapshot($other,$this->character->id));
-        $this->status(404,fn()=> app(ClientStateService::class)->saveEquipment($other,$this->character->id,['revision'=>0,'equipment'=>['weapon'=>'']]));
+        foreach (['tokens','gold','inventory','items','skills','pets','account_type','user_id'] as $key) { $this->rejected(fn()=> $this->save(['revision'=>0,'equipment'=>['weapon'=>''],$key=>999])); }
+        $other=Fixture::actor(); $this->expectHttp(404,fn()=> app(ClientStateService::class)->snapshot($other,$this->character->id));
+        $this->expectHttp(404,fn()=> app(ClientStateService::class)->saveEquipment($other,$this->character->id,['revision'=>0,'equipment'=>['weapon'=>'']]));
         $this->assertSame(0,$this->snapshot()['revision']);
     }
     public function test_fresh_equipment_save_checks_ownership_slot_and_preserves_balances():void
@@ -180,7 +174,7 @@ final class EconomyIntegrityTest extends TestCase
         $saved=$this->save(['revision'=>$current['revision'],'equipment'=>['weapon'=>$content['key']]]);
         $this->assertSame($content['key'],$saved['equipment']['weapon']); $this->assertSame(10,$saved['tokens']); $this->assertSame(0,$saved['gold']); $this->assertSame(2,$saved['revision']);
         $this->assertDatabaseHas('nl_operations_audit',['actor_id'=>$this->player->id,'action'=>'equipment.save']);
-        $this->status(409,fn()=> $this->save(['revision'=>$current['revision'],'equipment'=>['weapon'=>'']]));
+        $this->expectHttp(409,fn()=> $this->save(['revision'=>$current['revision'],'equipment'=>['weapon'=>'']]));
     }
     public function test_equipment_level_premium_and_legacy_duplicates_are_rejected():void
     {
@@ -190,8 +184,7 @@ final class EconomyIntegrityTest extends TestCase
         DB::table('items')->where('item_id',$content['key'])->update(['level'=>1,'premium'=>true]); $this->rejected(fn()=> $this->save($payload));
         DB::table('items')->where('item_id',$content['key'])->update(['premium'=>false]);
         DB::table('character_items')->insert(['character_id'=>$this->character->id,'item_id'=>$content['key'],'quantity'=>1,'category'=>'weapon','created_at'=>now(),'updated_at'=>now()]);
-        $this->rejected(fn()=> $this->save($payload)); $this->assertSame(2,DB::table('character_items')->where('character_id',$this->character->id)->count());
-        $this->assertSame(1,StateRevision::current($this->player->id));
+        $this->rejected(fn()=> $this->save($payload)); $this->assertSame(2,DB::table('character_items')->where('character_id',$this->character->id)->count()); $this->assertSame(1,StateRevision::current($this->player->id));
     }
     public function test_legacy_command_and_http_paths_do_not_mutate_rewards():void
     {
@@ -204,8 +197,7 @@ final class EconomyIntegrityTest extends TestCase
     public function test_actual_livewire_mount_rejects_quarantined_component():void
     {
         $this->actingAs($this->admin); Livewire::test(App\Filament\Pages\WorldChat::class)->assertForbidden();
-        $hook=new App\Support\Economy\EnforceEvaluationSurface(); $hook->setComponent(new App\Filament\Pages\WorldChat());
-        $this->status(403,fn()=> $hook->callBoot());
+        $hook=new App\Support\Economy\EnforceEvaluationSurface(); $hook->setComponent(new App\Filament\Pages\WorldChat()); $this->expectHttp(403,fn()=> $hook->callBoot());
     }
     public function test_actual_console_event_blocks_legacy_app_command():void
     {
@@ -213,11 +205,9 @@ final class EconomyIntegrityTest extends TestCase
         foreach ($commands as $name=>$command) {
             if (get_class($command)!==App\Console\Commands\FixCharacterItems::class) { continue; } $found=true;
             try { Illuminate\Support\Facades\Artisan::call($name); $this->fail('Legacy command unexpectedly ran'); }
-            catch (RuntimeException $e) { $this->assertStringContainsString('dikarantina',$e->getMessage()); }
-            break;
+            catch (RuntimeException $e) { $this->assertStringContainsString('dikarantina',$e->getMessage()); } break;
         }
-        $this->assertTrue($found,'Legacy command must remain discoverable for explicit denial');
-        $this->assertTrue(EvaluationSurface::commandAllowed(App\Console\Commands\CreateEvaluationAdmin::class));
+        $this->assertTrue($found,'Legacy command must remain discoverable for explicit denial'); $this->assertTrue(EvaluationSurface::commandAllowed(App\Console\Commands\CreateEvaluationAdmin::class));
     }
     public function test_staff_livewire_uses_authenticated_actor_and_requires_explicit_new_grant():void
     {
@@ -225,11 +215,10 @@ final class EconomyIntegrityTest extends TestCase
         $page=Livewire::test(StaffGrants::class)->set('characterId',(string)$this->character->id)->set('quantity','7')->set('reason','QA approved compensation')->call('grant')->assertHasNoErrors();
         $receipt=$page->get('receiptId'); $key=$page->get('requestKey'); $this->assertNotEmpty($receipt);
         $page->call('grant')->assertSet('receiptId',$receipt)->assertSet('requestKey',$key); $this->assertSame(7,(int)$this->player->fresh()->tokens);
-        $page->call('newGrant')->assertSet('receiptId',''); $this->assertNotSame($key,$page->get('requestKey'));
-        $this->actingAs($this->player)->get('/admin/staff-grants')->assertForbidden();
+        $page->call('newGrant')->assertSet('receiptId',''); $this->assertNotSame($key,$page->get('requestKey')); $this->actingAs($this->player)->get('/admin/staff-grants')->assertForbidden();
     }
     public function test_services_are_not_enabled_in_production():void
     {
-        $this->app->instance('env','production'); $this->status(403,fn()=> $this->grant()); $this->status(403,fn()=> $this->snapshot());
+        $this->app->instance('env','production'); $this->expectHttp(403,fn()=> $this->grant()); $this->expectHttp(403,fn()=> $this->snapshot());
     }
 }
