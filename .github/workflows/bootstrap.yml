@@ -1,0 +1,36 @@
+name: B00 bootstrap
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: b00-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6, pinned
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          lfs: false
+      - name: Unit tests for bootstrap guards
+        run: python3 -m unittest discover -s tests -v
+      - name: Validate bootstrap only
+        run: python3 scripts/ci/check_bootstrap.py
+      - name: Record test scope
+        if: always()
+        env:
+          CHECK_RESULT: ${{ job.status }}
+        run: |
+          printf '## B00 bootstrap\n\nResult: %s\n\nCommit tested: `%s`\n\nScope: repository/bootstrap guards only; not Laravel, gameplay, Discord or Android.\n\nArtifact uploads: disabled. Dependency cache: disabled.\n' "$CHECK_RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
