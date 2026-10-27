@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="../../vendor/autoload.php" colors="false" cacheResult="false">
+    <php>
+        <!-- Preserve literal true: PHPUnit otherwise casts it to bool then putenv writes 1. -->
+        <env name="NL_EVALUATION_GATEWAY" value="true" force="true" verbatim="true"/>
+    </php>
+    <testsuites><testsuite name="Evaluation client gateway"><directory suffix="Test.php">.</directory></testsuite></testsuites>
+</phpunit>

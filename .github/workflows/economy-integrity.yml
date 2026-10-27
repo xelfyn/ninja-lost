@@ -51,8 +51,11 @@ jobs:
       - name: Source inventory and syntax
         run: |
           python3 scripts/ci/economy_inventory.py
-          find app/Support/Economy app/Services/Rewards app/Services/Shop app/Services/Battles ops/economy ops/shop ops/battles -name '*.php' -print0 | xargs -0 -n1 php -l
+          find app/Support/Economy app/Services/Rewards app/Services/Shop app/Services/Battles app/Evaluation ops/economy ops/shop ops/battles ops/gateway -name '*.php' -print0 | xargs -0 -n1 php -l
           node --check ops/shop/browser.cjs
+          node --check clients/evaluation/client.mjs
+          node --check ops/gateway/http-probe.mjs
+          bash -n ops/gateway/http.sh
       - name: Ephemeral application key
         run: |
           key="base64:$(openssl rand -base64 32)"
@@ -68,6 +71,8 @@ jobs:
         run: vendor/bin/phpunit -c ops/shop/phpunit.xml --testdox
       - name: Battle settlement contract and unverified verdict rejection
         run: vendor/bin/phpunit -c ops/battles/phpunit.xml --testdox
+      - name: Opt-in JSON gateway authorization and shared economy
+        run: vendor/bin/phpunit -c ops/gateway/phpunit.xml --testdox
       - name: Cross-adapter concurrent writers
         run: php ops/economy/race.php
       - name: Purchase debit grant supply and stale-save races
@@ -76,9 +81,15 @@ jobs:
         run: php ops/battles/race.php
       - name: Real staff portal and shop browser flows
         run: bash ops/economy/browser.sh
+      - name: Real loopback HTTP client CSRF concurrent retry and restart
+        run: bash ops/gateway/http.sh
+      - name: Fresh process default-off and production route gates
+        run: |
+          APP_ENV=local NL_EVALUATION_GATEWAY=false php ops/gateway/check-gate.php
+          APP_ENV=production NL_EVALUATION_GATEWAY=true php ops/gateway/check-gate.php
       - name: Scope
         if: always()
         env:
           RESULT: ${{ job.status }}
         run: |
-          printf '## G8 economy, shop, battle settlement\n\nResult: %s\nRevision: `%s`\n\nEvaluation only. Battle tests use an explicit fixture verifier; default runtime rejects unverified results. No real combat validator, client wire certification, game endpoint, Discord, asset import, paid infrastructure or artifact upload.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          printf '## G8 economy, shop, battle settlement and diagnostic client\n\nResult: %s\nRevision: `%s`\n\nEvaluation only. Explicit loopback-only JSON adapter is tested with real HTTP and existing Laravel session/CSRF. Default-off and production gates remain. Battle verifier remains unavailable; synthetic battle tests are not real gameplay. No public game/AMF/combat endpoint, Discord, asset import, paid infrastructure, UI redesign or artifact upload.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
