@@ -6,7 +6,7 @@ permissions:
   contents: read
 concurrency:
   group: mb01-intake
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   intake:
     if: github.repository == 'xelfyn/ninja-lost' && github.event_name == 'push' && github.ref == 'refs/heads/batch/mb01-source-intake'
