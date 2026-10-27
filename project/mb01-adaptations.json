@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "base_commit": "f5422433b6e0fd20f74fe20ad6fbd1febfaed5ee",
+  "note": "server-intake.json is the historical intake record, not a continuously rewritten release manifest.",
+  "changes": [
+    {
+      "operation": "delete_duplicate",
+      "path": "app/Models/ListMysteriousMarkets.php",
+      "original_blob": "940b877f7f573f78bd667e2db9c4237629b45bd5",
+      "canonical_path": "app/Filament/Resources/MysteriousMarkets/Pages/ListMysteriousMarkets.php",
+      "canonical_blob": "940b877f7f573f78bd667e2db9c4237629b45bd5",
+      "reason": "Identical PHP class in a non-PSR-4 Models path; keep canonical implementation."
+    }
+  ]
+}
