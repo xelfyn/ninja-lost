@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-10-28",
+  "baseline": "14b9832484403c04e636902bc927067d4e648145",
+  "upstream": {
+    "repository": "YoshCasaster/Ninjasage-PrivateServer-community",
+    "observed_main": "a53f074aaa0690398db947205956ffb97d5671aa",
+    "client_tree": "a85077fb0ea20b2991f7eebe05f1469af3fc9e60",
+    "desktop_package_tree": "f2da399972e8be48b2a351aa39daebe55721d687",
+    "readme_blob": "cf07cbcd3eda98cbc8d9b3289d7b413e577efe81",
+    "inspected_package": "Client/Custom Client/NS Custom Client V1",
+    "observed_entries": ["NinjaSage.swf", "NinjaSage-app.xml", "NSCUSTOM.exe", "Launcher.cs", "Adobe AIR", "items", "skills", "swfpanels"],
+    "finding": "Inspected launch path is a packaged SWF/AIR desktop client. Launcher source and a packaging descriptor do not establish a complete reproducible Android/game-core rebuild.",
+    "scope_limit": "Directory metadata and README inspection only; no binary execution, decompilation, whole-repository absence claim, or license clearance for client/assets."
+  },
+  "actual_legacy_client_build": "NOT_DEMONSTRATED",
+  "android_build": "NOT_BUILT",
+  "asset_and_client_rights": "SEPARATE_REVIEW_REQUIRED",
+  "default_combat_verifier": "UNAVAILABLE_FAIL_CLOSED",
+  "g8d_choice": "Implement a source-owned loopback JSON diagnostic client using the existing web session and domain services; not an engine replacement or legacy packet compatibility claim.",
+  "ui_decision": "DEFER_COMPREHENSIVE_REFACTOR_CURRENT_DESIGN_NOT_ACCEPTED"
+}
