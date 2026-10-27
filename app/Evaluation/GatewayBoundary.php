@@ -35,7 +35,14 @@ final class GatewayBoundary
             $response = response()->json(['message' => $error->getMessage() ?: 'Permintaan ditolak.'], $error->getStatusCode(), $error->getHeaders());
         } catch (Throwable $error) {
             report($error);
-            $response = response()->json(['message' => 'Kesalahan internal; jangan mengganti request_key saat mencoba ulang.'], 500);
+            $response = response()->json([], 500);
+        }
+        // Laravel's routing pipeline can render a downstream exception before $next
+        // returns. Normalize those 5xx responses too, keeping the failure status.
+        // Domain transactions have already unwound; this does not convert a failure
+        // into success or suppress Laravel's exception reporting.
+        if ($response->getStatusCode() >= 500) {
+            $response = response()->json(['message' => 'Kesalahan internal; jangan mengganti request_key saat mencoba ulang.'], $response->getStatusCode());
         }
         $response->headers->set('Cache-Control', 'no-store, private');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
