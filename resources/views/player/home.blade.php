@@ -32,7 +32,7 @@
             </x-filament::input.select></x-filament::input.wrapper>
             @error('campaignId')<p role="alert">{{ $message }}</p>@enderror
             <label for="nl-choice">Pilihan hadiah</label>
-            <x-filament::input.wrapper><x-filament::input.select id="nl-choice" wire:model="choiceKey">
+            <x-filament::input.wrapper><x-filament::input.select id="nl-choice" wire:model.live="choiceKey">
                 <option value="">Pilih hadiah</option>
                 @foreach($choices as $choice)<option value="{{ $choice['key'] }}">{{ $choice['label'] }}</option>@endforeach
             </x-filament::input.select></x-filament::input.wrapper>
@@ -51,6 +51,7 @@
             @error('redeemCode')<p role="alert">{{ $message }}</p>@enderror
             <label for="nl-redeem-choice">ID pilihan dari pengumuman campaign</label>
             <x-filament::input.wrapper><x-filament::input id="nl-redeem-choice" wire:model="redeemChoice" maxlength="40" /></x-filament::input.wrapper>
+            @error('redeemChoice')<p role="alert">{{ $message }}</p>@enderror
             <p>Gunakan <code>default</code> untuk campaign dengan satu pilihan standar. Kode tidak disimpan di URL atau riwayat.</p>
             <x-filament::button type="submit" wire:loading.attr="disabled" :disabled="!$character">Redeem hadiah</x-filament::button>
         </form>

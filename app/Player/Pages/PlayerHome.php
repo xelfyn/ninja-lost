@@ -4,6 +4,7 @@ namespace App\Player\Pages;
 
 use App\Models\User;
 use App\Services\Rewards\RewardService;
+use App\Support\Rewards\RewardClock;
 use App\Support\Rewards\RewardRules;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -92,8 +93,9 @@ class PlayerHome extends Page
             ->select(['inventory.id', 'inventory.'.$column.' as content_key', 'definition.name as title'])
             ->addSelect($this->inventoryKind === 'item' ? 'inventory.quantity' : DB::raw('1 as quantity'))
             ->orderByDesc('inventory.id')->paginate(25, ['*'], 'inventoryPage');
+        $time = RewardClock::now();
         $campaigns = DB::table('nl_campaigns')->where('kind', 'starter')->where('status', 'active')
-            ->where('starts_at', '<=', now())->where('ends_at', '>', now())->whereColumn('claimed_count', '<', 'max_claims')
+            ->where('starts_at', '<=', $time)->where('ends_at', '>', $time)->whereColumn('claimed_count', '<', 'max_claims')
             ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('nl_claims')->whereColumn('campaign_id', 'nl_campaigns.id')->where('user_id', $userId))
             ->orderBy('id')->limit(100)->get();
         $selected = $campaigns->firstWhere('id', (int) $this->campaignId);

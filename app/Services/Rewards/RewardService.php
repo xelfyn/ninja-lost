@@ -3,6 +3,7 @@
 namespace App\Services\Rewards;
 
 use App\Models\User;
+use App\Support\Rewards\RewardClock;
 use App\Support\Rewards\RewardRules;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -59,7 +60,8 @@ final class RewardService
             if (DB::table('nl_claims')->where('campaign_id', $campaignId)->where('user_id', $account->id)->exists()) {
                 RewardRules::reject('Akun sudah mengeklaim campaign ini.');
             }
-            if ($campaign->status !== 'active' || now()->lt($campaign->starts_at) || now()->gte($campaign->ends_at)) {
+            $time = RewardClock::now();
+            if ($campaign->status !== 'active' || $time->lt(RewardClock::parse($campaign->starts_at)) || $time->gte(RewardClock::parse($campaign->ends_at))) {
                 RewardRules::reject('Campaign belum aktif atau sudah berakhir.');
             }
             if ($campaign->claimed_count >= $campaign->max_claims) {
@@ -91,18 +93,18 @@ final class RewardService
                 $result = $this->writer->apply($account, $character, $line, $catalog);
                 $granted[] = $result;
                 if ($catalog) {
-                    DB::table('nl_catalog')->where('id', $catalog->id)->increment('issued', $line['quantity'], ['updated_at' => now()]);
+                    DB::table('nl_catalog')->where('id', $catalog->id)->increment('issued', $line['quantity'], ['updated_at' => $time]);
                 }
-                $entries[] = ['claim_id' => $id, 'catalog_id' => $catalog?->id, 'kind' => $result['type'], 'content_key' => $result['key'], 'quantity' => $result['quantity'], 'balance_before' => $result['before'], 'balance_after' => $result['after'], 'created_at' => now()];
+                $entries[] = ['claim_id' => $id, 'catalog_id' => $catalog?->id, 'kind' => $result['type'], 'content_key' => $result['key'], 'quantity' => $result['quantity'], 'balance_before' => $result['before'], 'balance_after' => $result['after'], 'created_at' => $time];
             }
             DB::table('nl_claims')->insert([
                 'id' => $id, 'campaign_id' => $campaignId, 'user_id' => $account->id, 'character_id' => $characterId,
                 'idempotency_key' => $requestKey, 'request_hash' => $fingerprint, 'choice_key' => $choice,
                 'source' => 'player_portal', 'actor_id' => $account->id, 'reason' => $campaign->title,
-                'granted' => json_encode($granted, JSON_THROW_ON_ERROR), 'created_at' => now(),
+                'granted' => json_encode($granted, JSON_THROW_ON_ERROR), 'created_at' => $time,
             ]);
             DB::table('nl_reward_ledger')->insert($entries);
-            DB::table('nl_campaigns')->where('id', $campaignId)->increment('claimed_count', 1, ['updated_at' => now()]);
+            DB::table('nl_campaigns')->where('id', $campaignId)->increment('claimed_count', 1, ['updated_at' => $time]);
             return ['id' => $id, 'replayed' => false, 'granted' => $granted];
         }, 3);
     }

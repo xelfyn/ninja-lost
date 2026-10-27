@@ -6,6 +6,7 @@ use App\Services\Rewards\RewardManagement;
 use App\Services\Rewards\RewardService;
 use App\Services\Rewards\RewardWriter;
 use App\Support\Rewards\RewardRules;
+use Filament\Auth\Pages\Login as PlayerLogin;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Foundation\Testing\TestCase;
@@ -58,7 +59,7 @@ final class RewardRuntimeTest extends TestCase
     {
         $password = bin2hex(random_bytes(24)); $this->player->password = $password; $this->player->save();
         session()->start(); $before = session()->getId();
-        Livewire::test(Filament\Auth\Pages\Login::class)->fillForm(['email'=>$this->player->email, 'password'=>$password])->call('authenticate')->assertHasNoFormErrors();
+        Livewire::test(PlayerLogin::class)->fillForm(['email'=>$this->player->email, 'password'=>$password])->call('authenticate')->assertHasNoFormErrors();
         $this->assertAuthenticatedAs($this->player);
         $this->assertNotSame($before, session()->getId());
         $this->post('/portal/logout')->assertRedirect();
@@ -68,11 +69,11 @@ final class RewardRuntimeTest extends TestCase
     {
         $password = bin2hex(random_bytes(24)); $this->player->password = $password; $this->player->save();
         for ($i=0; $i<5; $i++) {
-            Livewire::test(Filament\Auth\Pages\Login::class)->fillForm(['email'=>$this->player->email, 'password'=>'wrong-password'])->call('authenticate');
+            Livewire::test(PlayerLogin::class)->fillForm(['email'=>$this->player->email, 'password'=>'wrong-password'])->call('authenticate');
             $this->assertGuest();
         }
-        Livewire::test(Filament\Auth\Pages\Login::class)->fillForm(['email'=>$this->player->email, 'password'=>$password])->call('authenticate');
-        $this->assertGuest('Sixth attempt must be rate limited even with correct credentials.');
+        Livewire::test(PlayerLogin::class)->fillForm(['email'=>$this->player->email, 'password'=>$password])->call('authenticate');
+        $this->assertGuest();
     }
     public function test_normal_claim_updates_shared_account_and_character_balances(): void
     {

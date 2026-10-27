@@ -3,8 +3,8 @@
 namespace App\Services\Rewards;
 
 use App\Models\User;
+use App\Support\Rewards\RewardClock;
 use App\Support\Rewards\RewardRules;
-use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -17,7 +17,7 @@ final class RewardManagement
 
     private function audit(User $actor, string $action, string $subject, array $details): void
     {
-        DB::table('nl_operations_audit')->insert(['actor_id' => $actor->id, 'action' => $action, 'subject' => $subject, 'details' => json_encode($details, JSON_THROW_ON_ERROR), 'created_at' => now()]);
+        DB::table('nl_operations_audit')->insert(['actor_id' => $actor->id, 'action' => $action, 'subject' => $subject, 'details' => json_encode($details, JSON_THROW_ON_ERROR), 'created_at' => RewardClock::now()]);
     }
 
     public function register(User $actor, array $input): int
@@ -55,6 +55,7 @@ final class RewardManagement
             if ($opening > 4294967295 || ($limit !== null && $opening > $limit)) {
                 RewardRules::reject('Supply tidak boleh lebih kecil dari inventory yang sudah ada.');
             }
+            $time = RewardClock::now();
             $id = DB::table('nl_catalog')->insertGetId([
                 'kind' => $data['kind'], 'content_key' => $data['content_key'], 'title' => $data['title'],
                 'source_url' => $data['source_url'], 'source_revision' => $data['source_revision'],
@@ -62,7 +63,7 @@ final class RewardManagement
                 'compatibility_note' => $data['compatibility_note'],
                 'effect_metadata' => isset($data['effect_metadata']) ? json_encode($data['effect_metadata'], JSON_THROW_ON_ERROR) : null,
                 'supply_limit' => $limit, 'opening_issued' => $opening, 'issued' => $opening,
-                'enabled' => false, 'created_by' => $actor->id, 'created_at' => now(), 'updated_at' => now(),
+                'enabled' => false, 'created_by' => $actor->id, 'created_at' => $time, 'updated_at' => $time,
             ]);
             $this->audit($actor, 'catalog.register', 'catalog:'.$id, ['opening_issued' => $opening, 'supply_limit' => $limit]);
             return $id;
@@ -75,7 +76,7 @@ final class RewardManagement
         DB::transaction(function () use ($actor, $id, $enabled) {
             $row = DB::table('nl_catalog')->where('id', $id)->lockForUpdate()->first();
             abort_unless($row, 404);
-            DB::table('nl_catalog')->where('id', $id)->update(['enabled' => $enabled, 'updated_at' => now()]);
+            DB::table('nl_catalog')->where('id', $id)->update(['enabled' => $enabled, 'updated_at' => RewardClock::now()]);
             $this->audit($actor, 'catalog.state', 'catalog:'.$id, ['enabled' => $enabled]);
         }, 3);
     }
@@ -89,25 +90,30 @@ final class RewardManagement
             'kind' => ['required', 'in:starter,redeem'],
             'code' => ['nullable', 'string', 'max:64'],
             'starts_at' => ['required', 'date'],
-            'ends_at' => ['required', 'date', 'after:starts_at'],
+            'ends_at' => ['required', 'date'],
             'max_claims' => ['required', 'integer', 'min:1', 'max:1000000'],
             'choices' => ['required', 'array'],
         ])->validate();
+        $start = RewardClock::parse($data['starts_at']);
+        $end = RewardClock::parse($data['ends_at']);
+        if ($end->lte($start)) {
+            RewardRules::reject('Waktu berakhir harus sesudah waktu mulai (UTC).');
+        }
         $choices = RewardRules::choices($data['choices']);
         $hash = $data['kind'] === 'redeem' ? RewardRules::codeHash($data['code'] ?? '') : null;
         if ($data['kind'] === 'starter' && !empty($data['code'])) {
             RewardRules::reject('Starter pack tidak menggunakan kode redeem.');
         }
-        return DB::transaction(function () use ($actor, $data, $choices, $hash) {
+        return DB::transaction(function () use ($actor, $data, $choices, $hash, $start, $end) {
             if (DB::table('nl_campaigns')->where('slug', $data['slug'])->exists() || ($hash && DB::table('nl_campaigns')->where('code_hash', $hash)->exists())) {
                 RewardRules::reject('Slug/kode sudah digunakan.');
             }
+            $time = RewardClock::now();
             $id = DB::table('nl_campaigns')->insertGetId([
                 'slug' => $data['slug'], 'title' => $data['title'], 'kind' => $data['kind'], 'status' => 'draft',
-                'code_hash' => $hash, 'starts_at' => CarbonImmutable::parse($data['starts_at'])->utc(),
-                'ends_at' => CarbonImmutable::parse($data['ends_at'])->utc(), 'max_claims' => (int) $data['max_claims'],
+                'code_hash' => $hash, 'starts_at' => $start, 'ends_at' => $end, 'max_claims' => (int) $data['max_claims'],
                 'choices' => json_encode($choices, JSON_THROW_ON_ERROR), 'created_by' => $actor->id,
-                'created_at' => now(), 'updated_at' => now(),
+                'created_at' => $time, 'updated_at' => $time,
             ]);
             // Never retain plaintext reward codes in the database, audit log or notifications.
             $this->audit($actor, 'campaign.create', 'campaign:'.$id, ['kind' => $data['kind'], 'claim_scope' => 'account', 'max_claims' => (int) $data['max_claims']]);
@@ -123,7 +129,7 @@ final class RewardManagement
             $row = DB::table('nl_campaigns')->where('id', $id)->lockForUpdate()->first();
             abort_unless($row, 404);
             if ($status === 'active') {
-                if (now()->gte($row->ends_at) || $row->claimed_count >= $row->max_claims) {
+                if (RewardClock::now()->gte(RewardClock::parse($row->ends_at)) || $row->claimed_count >= $row->max_claims) {
                     RewardRules::reject('Campaign kedaluwarsa atau kuotanya habis.');
                 }
                 foreach (RewardRules::choices(json_decode($row->choices, true, 32, JSON_THROW_ON_ERROR)) as $choice) {
@@ -134,7 +140,7 @@ final class RewardManagement
                     }
                 }
             }
-            DB::table('nl_campaigns')->where('id', $id)->update(['status' => $status, 'updated_at' => now()]);
+            DB::table('nl_campaigns')->where('id', $id)->update(['status' => $status, 'updated_at' => RewardClock::now()]);
             $this->audit($actor, 'campaign.state', 'campaign:'.$id, ['from' => $row->status, 'to' => $status]);
         }, 3);
     }
