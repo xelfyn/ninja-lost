@@ -5,7 +5,9 @@ cd "$(dirname "$0")/../.."
 root="$(pwd -P)"
 project="$(python3 ops/preview/ci_guard.py)"
 uid="$(id -u)"; gid="$(id -g)"
-compose=(docker compose --ansi never --project-name "$project" --file .devcontainer/compose.yaml)
+# Only this admitted disposable CI runner uses a privileged Compose client.
+# The application stays non-root; mysql.env stays private when owned by UID 1000.
+compose=(sudo docker compose --ansi never --project-name "$project" --file .devcontainer/compose.yaml)
 cleanup() {
   status=$?
   trap - EXIT
