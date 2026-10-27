@@ -1,0 +1,11 @@
+{
+  "repository": "YoshCasaster/Ninjasage-PrivateServer-community",
+  "commit": "a53f074aaa0690398db947205956ffb97d5671aa",
+  "files": [
+    {"path":"pvp-server/src/battle/Battle.js","local":"Battle.js","git_blob":"31f0cd345cf1bdff20b7961eb358c5d85492dfaa","max_bytes":70000},
+    {"path":"pvp-server/src/battle/StatsCalc.js","local":"StatsCalc.js","git_blob":"8d166b6a175c0749155f91003d0412370c17776b","max_bytes":12000},
+    {"path":"LICENSE","local":"LICENSE","git_blob":"88218ed71e6e766a10fc75410870ebfc368b5f3c","max_bytes":2000},
+    {"path":"Client/Custom Client/NS Custom Client V1/NinjaSage-app.xml","local":"descriptor.xml","git_blob":"071099d1cdf36cb607de687fd080ba5e72cf1592","max_bytes":4000}
+  ],
+  "scope":"Selected text only, temporary evaluation. No assets, executables, AIR SDK, secrets, or game data. Root MIT notice does not clear client/asset rights."
+}

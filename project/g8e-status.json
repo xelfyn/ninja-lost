@@ -1,0 +1,12 @@
+{
+  "batch":"G8E",
+  "base":"1d1c23b0eca96cc695fdd65b71f4edcbaadc10b2",
+  "scope":"upstream combat execution and turn-integrity evaluation",
+  "acceptance":"CI_PENDING_AT_AUTHORING; consult exact PR/main workflow evidence",
+  "ui":"DEFERRED_CURRENT_DESIGN_NOT_ACCEPTED",
+  "native_client":"NOT_BUILT_OR_EXECUTED",
+  "combat_reward_bridge":"NOT_ENABLED",
+  "live_gate":"OPEN",
+  "source_lock":"ops/combat/upstream-lock.json",
+  "runbook":"docs/G8E_COMBAT_READINESS.md"
+}

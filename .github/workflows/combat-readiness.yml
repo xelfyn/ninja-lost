@@ -1,0 +1,37 @@
+name: Ninja Lost upstream combat readiness
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: combat-readiness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  combat:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Pinned selected text intake and complete-tree metadata audit
+        run: |
+          python3 ops/combat/fetch-source.py "$RUNNER_TEMP/nl-combat-source"
+      - name: Syntax and real community engine regression
+        env:
+          NL_COMBAT_SOURCE: ${{ runner.temp }}/nl-combat-source
+        run: |
+          node --version
+          node --check combat/evaluation/TurnSafeBattle.cjs
+          node --check ops/combat/fixture.cjs
+          node --test ops/combat/combat.test.cjs
+      - name: Remove own ephemeral source and report boundary
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          rm -rf -- "$RUNNER_TEMP/nl-combat-source"
+          printf '## G8E combat readiness\nResult: %s\nSource revision: `%s`\nEvaluation of pinned upstream Battle/StatsCalc with explicit synthetic socket/clock/catalogue/identity adapters. No legacy DB writer, native client, assets, reward integration, public service or UI redesign. Known upstream defect reproductions are not positive safety tests. No artifact upload.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
