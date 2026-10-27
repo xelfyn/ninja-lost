@@ -34,7 +34,7 @@ jobs:
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
           MYSQL_DATABASE: ninja_lost_eval
-        ports: ['3306:3306']
+        ports: ['127.0.0.1:3306:3306']
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1"
           --health-interval=10s --health-timeout=5s --health-retries=10
@@ -70,9 +70,13 @@ jobs:
           echo "APP_KEY=$key" >> "$GITHUB_ENV"
       - name: Real MySQL migrations and Filament integration tests
         run: bash ops/runtime/setup-ci.sh
+      - name: Strict autoload check
+        run: composer dump-autoload --optimize --strict-psr --no-scripts --no-plugins --no-interaction
+      - name: Browser interactions and process restart
+        run: bash ops/browser/run.sh
       - name: Record scope
         if: always()
         env:
           RESULT: ${{ job.status }}
         run: |
-          printf '## MB01 runtime\n\nResult: %s\n\nRevision: `%s`\n\nScope: Laravel/MySQL/Filament integration; no persistent preview, gameplay, Discord or Android verification. No artifact upload or cache.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          printf '## MB01 validation\n\nResult: %s\n\nRevision: `%s`\n\nIntegration and browser step results must be read separately. Browser covers Chromium desktop/mobile-sized viewport, login, search, config save and application-process restart. No real phone, persistent preview, gameplay, Discord or Android verification. Screenshots are ephemeral; no artifact upload or persistent cache.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
