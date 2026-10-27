@@ -51,7 +51,8 @@ jobs:
       - name: Source inventory and syntax
         run: |
           python3 scripts/ci/economy_inventory.py
-          find app/Support/Economy app/Services/Rewards ops/economy -name '*.php' -print0 | xargs -0 -n1 php -l
+          find app/Support/Economy app/Services/Rewards app/Services/Shop ops/economy ops/shop -name '*.php' -print0 | xargs -0 -n1 php -l
+          node --check ops/shop/browser.cjs
       - name: Ephemeral application key
         run: |
           key="base64:$(openssl rand -base64 32)"
@@ -63,13 +64,17 @@ jobs:
           composer dump-autoload --optimize --strict-psr --no-scripts --no-plugins --no-interaction
       - name: Staff and stale-state integration
         run: vendor/bin/phpunit -c ops/economy/phpunit.xml --testdox
+      - name: Controlled shop and populated-schema upgrade
+        run: vendor/bin/phpunit -c ops/shop/phpunit.xml --testdox
       - name: Cross-adapter concurrent writers
         run: php ops/economy/race.php
-      - name: Real staff to portal browser flow
+      - name: Purchase debit grant supply and stale-save races
+        run: php ops/shop/race.php
+      - name: Real staff portal and shop browser flows
         run: bash ops/economy/browser.sh
       - name: Scope
         if: always()
         env:
           RESULT: ${{ job.status }}
         run: |
-          printf '## G8 economy integrity\n\nResult: %s\nRevision: `%s`\n\nEvaluation only. No public game endpoints, live Discord, asset imports, paid infrastructure or artifact upload. Legacy paths quarantined are NOT migrated gameplay.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          printf '## G8 economy and controlled shop\n\nResult: %s\nRevision: `%s`\n\nEvaluation only. No public game endpoints, live Discord, asset imports, paid infrastructure or artifact upload. Legacy paths quarantined are NOT migrated gameplay. Shop supports explicit item/skill offers, not pet multiplicity, sales, PvP prices or battle settlement.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
