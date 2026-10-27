@@ -24,7 +24,10 @@ final class CompatibilityTest extends TestCase
     public function test_signed_legacy_snapshot_is_rejected_on_actual_hydration():void
     {
         $this->actingAs(Fixture::actor(99));
-        $component=app('livewire')->new(App\Filament\Pages\WorldChat::class);
+        // Test-only registration simulates a previously registered component identity.
+        // Production does not register this alias. Without it lookup rejects before hydration.
+        LivewireTest::component('qa-legacy-world-chat',App\Filament\Pages\WorldChat::class);
+        $component=app('livewire')->new('qa-legacy-world-chat');
         $handler=app(Livewire\Mechanisms\HandleComponents\HandleComponents::class);
         $snapshot=$handler->snapshot($component); $this->assertNotEmpty($snapshot['checksum']);
         try {

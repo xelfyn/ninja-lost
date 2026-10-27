@@ -30,7 +30,11 @@ final class EconomyIntegrityTest extends TestCase
     public function createApplication()
     {
         $app=require dirname(__DIR__,2).'/bootstrap/app.php';
-        $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); return $app;
+        $kernel=$app->make(Illuminate\Contracts\Console\Kernel::class);
+        // Laravel intentionally omits Symfony-to-Laravel console events in unit tests.
+        // Enable the same dispatcher used outside tests before Artisan is instantiated.
+        $kernel->rerouteSymfonyCommandEvents();
+        $kernel->bootstrap(); return $app;
     }
     protected function setUp():void
     {
@@ -201,13 +205,20 @@ final class EconomyIntegrityTest extends TestCase
     }
     public function test_actual_console_event_blocks_legacy_app_command():void
     {
+        $sentinel=DB::table('character_items')->insertGetId(['character_id'=>$this->character->id,'item_id'=>'wpn_qa_'.bin2hex(random_bytes(8)),'quantity'=>1,'category'=>'item','created_at'=>now(),'updated_at'=>now()]);
+        $before=(array)DB::table('character_items')->where('id',$sentinel)->first();
         $commands=app(Illuminate\Contracts\Console\Kernel::class)->all(); $found=false;
         foreach ($commands as $name=>$command) {
-            if (get_class($command)!==App\Console\Commands\FixCharacterItems::class) { continue; } $found=true;
-            try { Illuminate\Support\Facades\Artisan::call($name); $this->fail('Legacy command unexpectedly ran'); }
-            catch (RuntimeException $e) { $this->assertStringContainsString('dikarantina',$e->getMessage()); } break;
+            if (get_class($command)!==App\Console\Commands\FixCharacterItems::class) { continue; } $found=true; $caught=null;
+            try { Illuminate\Support\Facades\Artisan::call($name); }
+            catch (RuntimeException $e) { $caught=$e; }
+            $this->assertInstanceOf(RuntimeException::class,$caught,'Legacy command must be denied before handle');
+            $this->assertStringContainsString('dikarantina',$caught->getMessage()); break;
         }
-        $this->assertTrue($found,'Legacy command must remain discoverable for explicit denial'); $this->assertTrue(EvaluationSurface::commandAllowed(App\Console\Commands\CreateEvaluationAdmin::class));
+        $this->assertTrue($found,'Legacy command must remain discoverable for explicit denial');
+        $this->assertSame($before,(array)DB::table('character_items')->where('id',$sentinel)->first());
+        $this->assertSame(0,(int)$this->player->fresh()->tokens);
+        $this->assertTrue(EvaluationSurface::commandAllowed(App\Console\Commands\CreateEvaluationAdmin::class));
     }
     public function test_staff_livewire_uses_authenticated_actor_and_requires_explicit_new_grant():void
     {
