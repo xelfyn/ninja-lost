@@ -24,6 +24,9 @@ let browser;
 const results = [], pageErrors = [], consoleErrors = [], httpErrors = [];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 function pass(name, detail) { results.push({ name, status: 'PASS', detail }); console.log(`PASS ${name}: ${detail}`); }
+function fixture(mode) {
+  execFileSync('php', ['ops/browser/fixture.php', mode], { cwd: ROOT, env: appEnv, stdio: 'pipe', timeout: 30000 });
+}
 async function startServer() {
   // Bundled Laravel router reads getcwd(); it MUST run in the public directory.
   server = spawn('php', ['-S', '127.0.0.1:8000', '-t', PUBLIC,
@@ -47,6 +50,8 @@ async function stopServer() {
   server = null;
 }
 function observe(page) {
+  page.setDefaultTimeout(20000);
+  page.setDefaultNavigationTimeout(20000);
   page.on('pageerror', error => pageErrors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
   page.on('response', response => {
@@ -80,9 +85,10 @@ async function login(page) {
 }
 async function main() {
   fs.mkdirSync(proof, { recursive: true });
-  execFileSync('php', ['ops/browser/fixture.php', 'prepare'], { cwd: ROOT, env: appEnv, stdio: 'pipe' });
+  fixture('prepare');
+  console.log('STEP admin browser: synthetic fixture ready');
   await startServer();
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, timeout: 20000 });
   const desktop = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
   const page = await desktop.newPage(); observe(page);
   await page.goto(`${BASE}/admin`, { waitUntil: 'networkidle' });
@@ -111,13 +117,13 @@ async function main() {
   await page.getByText('Game settings saved', { exact: true }).waitFor();
   await page.reload({ waitUntil: 'networkidle' });
   assert.equal(await toggle.getAttribute('aria-checked'), 'true');
-  execFileSync('php', ['ops/browser/fixture.php', 'verify'], { cwd: ROOT, env: appEnv, stdio: 'pipe' });
+  fixture('verify');
   pass('database-save', 'UI write confirmed by independent PHP/MySQL read');
   await stopServer(); await startServer();
   await page.goto(`${BASE}/admin/game-settings`, { waitUntil: 'networkidle' });
   await assertPage(page, 'Game Settings');
   assert.equal(await toggle.getAttribute('aria-checked'), 'true');
-  execFileSync('php', ['ops/browser/fixture.php', 'verify'], { cwd: ROOT, env: appEnv, stdio: 'pipe' });
+  fixture('verify');
   pass('process-restart', 'New PHP HTTP process reads saved setting; file session survives');
   await screenshot(page, 'settings-after-restart');
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1, reducedMotion: 'reduce' });
@@ -140,7 +146,7 @@ async function main() {
   assert.deepEqual(relevantConsole, [], 'Unexpected browser console error');
   pass('browser-health', `No runtime JS/application HTTP errors; ${consoleErrors.length} console errors checked, favicon-only 404 allowed`);
   for (const route of ['/amf', '/gateway.php', '/clan/auth/login', '/crew/auth/login']) {
-    assert.equal((await desktop.request.post(`${BASE}${route}`)).status(), 404, `Legacy route exposed: ${route}`);
+    assert.equal((await desktop.request.post(`${BASE}${route}`, { timeout: 10000 })).status(), 404, `Legacy route exposed: ${route}`);
   }
   pass('legacy-routes-closed', 'Game mutation endpoints remain unavailable');
   await mobile.close(); await desktop.close();
