@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Services\Rewards\RewardManagement;
+use Carbon\CarbonImmutable;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -43,7 +44,13 @@ class RewardCampaigns extends Page
     }
     public function createCampaign(): void
     {
-        app(RewardManagement::class)->createCampaign(auth()->user(), $this->form->getState());
+        $state = $this->form->getState();
+        // Filament displays UTC but dehydrates dates into the legacy app timezone.
+        // Restore an offset-bearing instant at this adapter boundary; service input is UTC.
+        foreach (['starts_at', 'ends_at'] as $field) {
+            $state[$field] = CarbonImmutable::parse($state[$field], config('app.timezone'))->utc()->toIso8601String();
+        }
+        app(RewardManagement::class)->createCampaign(auth()->user(), $state);
         $this->form->fill();
         Notification::make()->title('Draft campaign disimpan')->success()->send();
     }

@@ -81,10 +81,15 @@ final class RewardBoundaryTest extends TestCase
         $slug='qa-form-'.bin2hex(random_bytes(8));
         $start=RewardClock::now()->subMinute()->format('Y-m-d H:i:s');
         $end=RewardClock::now()->addDay()->format('Y-m-d H:i:s');
-        $page=Livewire::test(RewardCampaigns::class)->fillForm([
+        $page=Livewire::test(RewardCampaigns::class);
+        // Fill the actual UUID-backed rows, not a second numeric row beside the blank default.
+        $data=$page->get('data');
+        $choiceId=array_key_first($data['choices']);
+        $rewardId=array_key_first($data['choices'][$choiceId]['rewards']);
+        $page->fillForm([
             'slug'=>$slug,'title'=>'QA Form Campaign','kind'=>'starter','code'=>'',
             'starts_at'=>$start,'ends_at'=>$end,'max_claims'=>2,
-            'choices'=>[['key'=>'default','label'=>'QA Choice','rewards'=>[['type'=>'tokens','key'=>'','quantity'=>25]]]],
+            'choices'=>[$choiceId=>['key'=>'default','label'=>'QA Choice','rewards'=>[$rewardId=>['type'=>'tokens','key'=>'','quantity'=>25]]]],
         ])->call('createCampaign')->assertHasNoFormErrors()->assertHasNoErrors()->assertNotified('Draft campaign disimpan');
         $row=DB::table('nl_campaigns')->where('slug',$slug)->first();
         $this->assertNotNull($row); $this->assertSame('draft',$row->status);
