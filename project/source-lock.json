@@ -2,7 +2,7 @@
   "schema_version": 1,
   "project": "ninja-lost",
   "repository": "xelfyn/ninja-lost",
-  "batch": "B00",
+  "batch": "MB01",
   "source_intake_status": "not_imported",
   "candidate": {
     "repository": "YoshCasaster/Ninjasage-PrivateServer-community",
@@ -12,7 +12,7 @@
   },
   "ci_policy": {
     "runner": "ubuntu-24.04",
-    "timeout_minutes": 3,
+    "timeout_minutes": 15,
     "artifact_upload": false,
     "dependency_cache": false,
     "automatic_deployment": false,

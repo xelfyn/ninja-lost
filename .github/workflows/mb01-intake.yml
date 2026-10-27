@@ -1,0 +1,43 @@
+name: MB01 controlled source intake
+on:
+  push:
+    branches: [batch/mb01-source-intake]
+permissions:
+  contents: read
+concurrency:
+  group: mb01-intake
+  cancel-in-progress: false
+jobs:
+  intake:
+    if: github.repository == 'xelfyn/ninja-lost' && github.event_name == 'push' && github.ref == 'refs/heads/batch/mb01-source-intake'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Test trusted intake policy
+        run: python3 -m unittest discover -s tests -v
+      - name: Import pinned server text without executing upstream
+        run: python3 scripts/ci/import_server.py
+      - name: Validate staged source
+        run: |
+          git add app bootstrap config database resources routes public artisan composer.json composer.lock licenses project
+          python3 scripts/ci/check_repository.py
+      - name: Publish isolated review branch only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          branch="batch/mb01-server-${GITHUB_RUN_ID}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -b "$branch"
+          git commit -m 'feat(mb01): import pinned server text with evaluation-only routes'
+          header="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          echo "::add-mask::$header"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" push origin "HEAD:refs/heads/$branch"
+          printf '## MB01 source intake\n\nReview branch: `%s`\n\nCommit: `%s`\n\nNo upstream executable, dependency hook, seeder, runtime or deployment was executed in this write-permission job. Runtime still NOT_RUN.\n' "$branch" "$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
