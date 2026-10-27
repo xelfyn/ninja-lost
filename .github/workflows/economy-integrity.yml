@@ -1,0 +1,19 @@
+name: Ninja Lost economy integrity
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: economy-integrity-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - run: python3 scripts/ci/economy_inventory.py
