@@ -58,11 +58,30 @@ final class AdminRuntimeTest extends TestCase
     public function test_real_login_component_authenticates_admin(): void
     {
         $u=$this->actor(99);$password=bin2hex(random_bytes(24));$u->password=$password;$u->save();
-        Livewire::test(Filament\Auth\Pages\Login::class)->fillForm(['email'=>$u->email,'password'=>$password])->call('authenticate')->assertHasNoFormErrors();
+        Livewire::test(\Filament\Auth\Pages\Login::class)->fillForm(['email'=>$u->email,'password'=>$password])->call('authenticate')->assertHasNoFormErrors();
         $this->assertAuthenticatedAs($u);
     }
     public function test_game_routes_are_not_published(): void
     {
         foreach(['/amf','/gateway.php','/clan/auth/login','/crew/auth/login'] as $path){$this->post($path)->assertNotFound();}
+    }
+    public function test_wrong_password_cannot_authenticate(): void
+    {
+        $u=$this->actor(99);
+        Livewire::test(\Filament\Auth\Pages\Login::class)->fillForm(['email'=>$u->email,'password'=>'invalid-test-password'])->call('authenticate')->assertHasFormErrors(['email']);
+        $this->assertGuest();
+    }
+    public function test_non_admin_cannot_authenticate_to_panel(): void
+    {
+        $u=$this->actor(0);$password=bin2hex(random_bytes(24));$u->password=$password;$u->save();
+        Livewire::test(\Filament\Auth\Pages\Login::class)->fillForm(['email'=>$u->email,'password'=>$password])->call('authenticate')->assertHasFormErrors(['email']);
+        $this->assertGuest();
+    }
+    public function test_catalog_list_pages_render_for_admin(): void
+    {
+        $this->actingAs($this->actor(99));
+        foreach ([\App\Filament\Resources\Skills\SkillResource::class,\App\Filament\Resources\Items\ItemResource::class,\App\Filament\Resources\Pets\PetResource::class,\App\Filament\Resources\Missions\MissionResource::class] as $resource) {
+            $this->get($resource::getUrl('index',panel:'admin'))->assertOk();
+        }
     }
 }
