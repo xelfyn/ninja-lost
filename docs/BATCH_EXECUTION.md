@@ -19,14 +19,27 @@ Charges, paid capacity, production access, repository-visibility changes, destru
 operations on persistent data, credential handling and unresolved asset rights retain
 separate authorization boundaries. Never ask for passwords or tokens in chat.
 
-CI remains artifact-free unless a later approved requirement changes that policy.
-Do not publish screenshots or credentials in source. No background development is promised.
-If a provider account requires an action unavailable through current tools, record that
-external gate precisely; do not manufacture a URL or mark the provider provisioned.
+Routine CI remains artifact-free. Do not publish screenshots or credentials in source.
+No background development is promised. If a provider account requires an action unavailable
+through current tools, record that external gate precisely; do not manufacture a URL or
+mark the provider provisioned.
+
+## User-requested visual evidence, 28 October 2026
+
+The user requested current visual design screenshots where available. A separate opt-in
+`visual-review.yml` workflow may export selected real Chromium screenshots of synthetic
+fixtures only: at most 1 MiB including manifest, retention one day, public repository and
+standard runner only. It is not triggered on ordinary main/PR activity. No billing/budget
+or repository visibility is changed. No real player data, credentials, traces or source
+ZIPs are exported. Quota/export failure must be reported; never bypass limits or substitute
+a generated mockup for a claimed screenshot. Download and inspect the actual images before
+claiming visual QA, and retain pending user acceptance independently. Review/export metadata
+must identify the exact source commit; app interaction tests remain required.
 
 ## MB01 handoff
 
 Technical checks: source provenance, application/MySQL integration, actual Chromium
 interactions, process persistence, actual Compose image/setup, HTTP assets and container
 restart. The user-facing private Codespaces session and human visual acceptance are
-separate acceptance items. MB02 may be prepared but must not pretend those items passed.
+separate acceptance items. Later isolated batches may proceed but must not pretend those
+items passed. Screenshots now requested are not themselves a deployed private URL.
