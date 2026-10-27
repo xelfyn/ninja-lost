@@ -15,7 +15,7 @@ let server, browser;
 const errors = [], httpErrors = [], results = [];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 function pass(name) { console.log(`PASS ${name}`); results.push(name); }
-function fixture(mode) { return execFileSync('php', ['ops/rewards/browser-fixture.php', mode], { cwd: ROOT, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
+function fixture(mode) { return execFileSync('php', ['ops/rewards/browser-fixture.php', mode], { cwd: ROOT, env, encoding: 'utf8', timeout: 30000, stdio: ['ignore', 'pipe', 'pipe'] }); }
 async function start() {
   server = spawn('php', ['-S', '127.0.0.1:8000', '-t', PUBLIC, path.join(ROOT, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')], { cwd: PUBLIC, env, stdio: ['ignore', 'ignore', 'pipe'] });
   let stderr = ''; server.stderr.on('data', b => { stderr = (stderr + b.toString()).slice(-1500); });
@@ -33,6 +33,7 @@ async function stop() {
   try { await done; } finally { clearTimeout(timer); server = null; }
 }
 function observe(page) {
+  page.setDefaultTimeout(20000); page.setDefaultNavigationTimeout(20000);
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if(m.type()==='error' && !/Failed to load resource.*404/.test(m.text())) errors.push(m.text()); });
   page.on('response', r => { if(r.status()>=400 && r.url().startsWith(BASE) && !r.url().endsWith('/favicon.ico')) httpErrors.push(`${r.status()} ${new URL(r.url()).pathname}`); });
@@ -55,11 +56,14 @@ async function login(page) {
   await page.goto(BASE+'/portal/login', { waitUntil: 'networkidle' });
   await page.locator('input[type=email]').fill(email); await page.locator('input[type=password]').fill(password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.waitForLoadState('networkidle');
+  console.log(`INFO portal after login submit: ${new URL(page.url()).pathname}`);
   await page.waitForURL(/\/portal\/home\/?$/); await page.waitForLoadState('networkidle');
 }
 async function main() {
   assert.equal(process.env.CI, 'true'); assert.equal(process.env.DB_DATABASE, 'ninja_lost_eval');
-  const data = JSON.parse(fixture('prepare')); await start(); browser = await chromium.launch({ headless: true });
+  const data = JSON.parse(fixture('prepare')); console.log('STEP browser: isolated fixtures prepared');
+  await start(); browser = await chromium.launch({ headless: true, timeout: 20000 });
   const desktop = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
   const page = await desktop.newPage(); observe(page);
   await page.goto(BASE+'/portal/home', { waitUntil: 'networkidle' }); assert.equal(new URL(page.url()).pathname, '/portal/login');
@@ -77,7 +81,7 @@ async function main() {
   assert.equal(await page.getByTestId('nl-tokens').innerText(), '5000'); fixture('verify-starter'); pass('portal-session-and-reward-survive-process-restart');
   await shot(page, 'mb02-desktop');
   // Actual CSRF enforcement in APP_ENV=local; this deliberately rejected request is not a page resource.
-  assert.equal((await desktop.request.post(BASE+'/portal/logout')).status(), 419); pass('logout-without-csrf-rejected');
+  assert.equal((await desktop.request.post(BASE+'/portal/logout', { timeout: 10000 })).status(), 419); pass('logout-without-csrf-rejected');
   await page.goto(BASE+'/portal/catalog', { waitUntil: 'networkidle' }); await pageCheck(page, 'Katalog Konten');
   await page.locator('#nl-catalog-kind').selectOption('skill');
   await page.locator('#nl-catalog-search').fill('QA Synthetic skill');
