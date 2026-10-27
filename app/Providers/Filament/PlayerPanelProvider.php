@@ -12,7 +12,7 @@ class PlayerPanelProvider extends PanelProvider
     {
         return $panel->id('player')->path('portal')->brandName('Ninja Lost')->login()
             ->colors(['primary' => Color::Amber])
-            ->pages([\App\Player\Pages\PlayerHome::class, \App\Player\Pages\PlayerCatalog::class])
+            ->pages([\App\Player\Pages\PlayerHome::class, \App\Player\Pages\PlayerCatalog::class, \App\Player\Pages\PlayerShop::class])
             ->middleware([
                 \Illuminate\Cookie\Middleware\EncryptCookies::class,
                 \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
