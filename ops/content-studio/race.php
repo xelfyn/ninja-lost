@@ -1,6 +1,7 @@
 <?php
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php'; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+set_exception_handler(function (Throwable $e): void { fwrite(STDERR, get_class($e).': '.$e->getMessage()."\n"); exit(1); });
 require __DIR__.'/Fixture.php';
 use NinjaLost\QA\Fixture;
 use NinjaLost\QA\StudioFixture;
@@ -35,7 +36,9 @@ function runWorkers(array $requests): array
         verify($released, 'Readiness not reached'); $results = [];
         foreach ($jobs as $j) {
             $err = $j['errors'].stream_get_contents($j['err']); verify($j['exit'] === 0 && $err === '', 'Worker failed: '.substr($err, 0, 1000));
-            $results[] = json_decode($j['text'].stream_get_contents($j['out']), true, 32, JSON_THROW_ON_ERROR);
+            $result = json_decode($j['text'].stream_get_contents($j['out']), true, 32, JSON_THROW_ON_ERROR);
+            verify(is_array($result) && isset($result['ok']) && is_bool($result['ok']), 'Malformed worker response');
+            $results[] = $result;
         }
         return $results;
     } finally {

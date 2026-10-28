@@ -73,12 +73,12 @@ async function main() {
   lastPage = page; await health(page, '/admin/content-studio', 'Content Studio — Skill');
   const d = state.definition;
   for (const [key, value] of Object.entries({id: d.id, name: d.name, lore: d.lore, damage: d.damage, cp_cost: d.cp_cost, cooldown: d.cooldown, source_url: d.source_url, rights_evidence: d.rights_evidence, supply_limit: d.supply_limit})) {
-    await page.locator(`[id="data.${key}"]`).fill(String(value));
+    await page.locator(`[id="form.${key}"]`).fill(String(value));
   }
   for (let i = 0; i < d.effects.length; i++) {
     await page.getByRole('button', {name: 'Tambah efek', exact: true}).click();
-    const select = page.locator('select[id^="data.effects."][id$=".code"]').nth(i); await select.waitFor(); await select.selectOption(d.effects[i].code);
-    for (const key of ['duration', 'amount', 'chance']) await page.locator(`input[id^="data.effects."][id$=".${key}"]`).nth(i).fill(String(d.effects[i][key]));
+    const select = page.locator('select[id^="form.effects."][id$=".code"]').nth(i); await select.waitFor(); await select.selectOption(d.effects[i].code);
+    for (const key of ['duration', 'amount', 'chance']) await page.locator(`input[id^="form.effects."][id$=".${key}"]`).nth(i).fill(String(d.effects[i][key]));
   }
   await page.getByRole('button', {name: 'Validasi dan tooltip', exact: true}).click();
   await page.locator('#studio-preview').filter({hasText: 'Damage dasar 80'}).waitFor(); fixture('empty');
@@ -91,7 +91,7 @@ async function main() {
   await activate(page, first); fixture('active'); fixture('grant'); engine(74);
   await phone.reload({waitUntil: 'networkidle'}); await phone.getByText(d.name, {exact: true}).waitFor(); await health(phone, '/portal/catalog', 'Katalog Konten');
   console.log('PASS browser-authoring: real form -> draft -> release -> explicit activation -> common registry/grant -> existing source engine executes five effects');
-  await page.locator('[id="data.damage"]').fill('90'); await page.getByRole('button', {name: 'Simpan draft', exact: true}).click();
+  await page.locator('[id="form.damage"]').fill('90'); await page.getByRole('button', {name: 'Simpan draft', exact: true}).click();
   await page.locator('#studio-revision').filter({hasText: /^2$/}).waitFor(); fixture('unchanged-active'); engine(74);
   await page.getByRole('button', {name: 'Terbitkan versi tersimpan', exact: true}).click(); await page.locator('#studio-published').waitFor();
   const second = await page.locator('#studio-published').innerText(); assert.notEqual(first, second); await activate(page, second); engine(84);
@@ -101,7 +101,6 @@ async function main() {
   await health(page, '/admin/content-studio', 'Content Studio — Skill');
   await page.getByRole('button', {name: `Muat #${draft_id}`, exact: true}).click(); await page.locator('#studio-active').filter({hasText: first}).waitFor(); engine(74);
   await page.evaluate(() => window.scrollTo(0, 0)); await screenshot(page, 'studio-desktop');
-  // Independent mobile staff context, not a desktop sidebar captured during viewport transition.
   const phoneStaff = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true, reducedMotion: 'reduce'});
   const staffPage = await phoneStaff.newPage(); observe(staffPage); await login(staffPage, 'admin', admin);
   await staffPage.goto(BASE + '/admin/content-studio', {waitUntil: 'networkidle'}); await health(staffPage, '/admin/content-studio', 'Content Studio — Skill');

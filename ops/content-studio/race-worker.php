@@ -2,6 +2,9 @@
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 $app = require dirname(__DIR__, 2).'/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+// Laravel's CLI renderer can display an uncaught exception without a failing process status.
+// Standalone QA must always fail the worker for unexpected exceptions.
+set_exception_handler(function (Throwable $e): void { fwrite(STDERR, get_class($e).': '.$e->getMessage()."\n"); exit(1); });
 require __DIR__.'/Fixture.php';
 NinjaLost\QA\Fixture::guard();
 [$script, $encoded, $barrier, $index] = $argv;

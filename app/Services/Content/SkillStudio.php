@@ -63,7 +63,9 @@ final class SkillStudio
         return $this->write($actor, function () use ($actor, $releaseId, $expectedHead) {
             $release = DB::table('nl_studio_releases')->where('id', $releaseId)->first(); abort_unless($release, 404);
             $draft = DB::table('nl_studio_drafts')->where('id', $release->draft_id)->lockForUpdate()->first(); abort_unless($draft, 404);
-            $head = DB::table('nl_studio_heads')->where('draft_id', $draft->id)->first();
+            // A locking current read is required: the earlier immutable release read may have
+            // established an older REPEATABLE READ snapshot while this transaction waited.
+            $head = DB::table('nl_studio_heads')->where('draft_id', $draft->id)->lockForUpdate()->first();
             $payload = $this->decode($release); $d = $payload['definition'];
             if ($d['id'] !== $draft->content_key) SkillBlueprint::reject('Identitas release tidak cocok dengan draft.');
             if ($head && $head->release_id === $releaseId) {
@@ -76,9 +78,8 @@ final class SkillStudio
                 $old = DB::table('nl_studio_releases')->where('id', $head->release_id)->first();
                 if (!$old || (int) $old->draft_id !== (int) $draft->id) SkillBlueprint::reject('Head tidak konsisten.');
                 $oldPayload = $this->decode($old);
-                // Lock catalog then definition, the order used by existing controlled grants/shop/loadout.
                 $this->assertProjection($draft, $oldPayload);
-                $catalog = DB::table('nl_catalog')->where('id', $draft->catalog_id)->first();
+                $catalog = DB::table('nl_catalog')->where('id', $draft->catalog_id)->lockForUpdate()->first();
                 $limit = $catalog->supply_limit === null ? null : (int) $catalog->supply_limit;
                 if ($limit !== $d['supply_limit']) SkillBlueprint::reject('Batas supply tidak diubah melalui release mekanik. Pertahankan cap awal.');
                 DB::table('skills')->where('id', $draft->backend_skill_id)->update($this->projection($d) + ['updated_at' => $time]);
