@@ -14,6 +14,7 @@
   function controls() {
     $('configuration').disabled = busy || Boolean(pending);
     $('actions').disabled = busy || Boolean(pending) || !run || run.status !== 'active';
+    $('save').disabled = !loadout;
     $('start').disabled = !loadout || run?.status === 'active';
     $('logout').disabled = busy; $('refresh').disabled = busy; $('retry').hidden = !pending; $('retry').disabled = busy;
   }

@@ -151,7 +151,8 @@ final class TrainingTest extends TestCase
     public function test_expired_session_does_not_advance_but_receipt_retry_remains_safe(): void
     {
         $run = $this->start(); $command = $this->command($run); $a = $this->service()->action($this->player, $run['id'], $command);
-        DB::table('nl_training_runs')->where('id', $run['id'])->update(['expires_at' => now()->subMinute()]);
+        // Persist UTC exactly as the service does, not the legacy application's local wall time.
+        DB::table('nl_training_runs')->where('id', $run['id'])->update(['expires_at' => App\Support\Rewards\RewardClock::now()->subMinute()]);
         $this->assertSame('expired', $this->service()->get($this->player, $run['id'])['status']);
         $this->denied(410, fn () => $this->service()->action($this->player, $run['id'], $this->command($a['run'])));
         $this->assertTrue($this->service()->action($this->player, $run['id'], $command)['replayed']);

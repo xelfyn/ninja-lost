@@ -24,6 +24,25 @@ module.exports = async function clientProbes(page, training, fixture) {
   } finally { release(); await page.unroute(latest); }
   console.log('PASS training-stale-read: delayed revision4 refresh delivered after revision5 action cannot rewind player UI');
 
+  const loadout = `${training}/characters/${fixture.character}/loadout`;
+  let unlock, capturedLoadout;
+  const waiting = new Promise(resolve => { unlock = resolve; });
+  const arrived = new Promise(resolve => { capturedLoadout = resolve; });
+  await page.route(loadout, async route => { const response = await route.fetch(); capturedLoadout(); await waiting; await route.fulfill({response}); });
+  try {
+    await page.locator('#character').selectOption(String(fixture.character));
+    let timer;
+    try { await Promise.race([arrived, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Loadout probe deadline')), 15000); })]); }
+    finally { clearTimeout(timer); }
+    assert.equal(await page.locator('#save').isDisabled(), true);
+    assert.equal(await page.locator('#start').isDisabled(), true);
+    assert.equal(await page.locator('#actions').isDisabled(), true);
+    unlock();
+    await page.waitForFunction(() => !document.getElementById('save').disabled);
+    assert.equal(await page.locator('#run-status').getAttribute('data-revision'), '5');
+  } finally { unlock(); await page.unroute(loadout); }
+  console.log('PASS training-loadout-read: mutation controls stay disabled until selected-character state arrives');
+
   for (const path of ['/evaluation/v1/purchases', 'https://example.invalid/collect']) {
     await page.evaluate(({user, character, path}) => {
       sessionStorage.setItem('nl-training-intent:' + user, JSON.stringify({kind: 'action', characterId: character, path,
