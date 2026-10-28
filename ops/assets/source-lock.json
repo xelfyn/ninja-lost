@@ -48,14 +48,14 @@
     },
     {
       "kind": "clothing",
-      "canonical_id": "set_1_male",
+      "canonical_id": "set_1_variant_0",
       "path": "swf/items/set_01_0.swf",
       "git_blob": "c57bed595cc027d1066e3a804db79fd884088055",
       "bytes": 9858
     },
     {
       "kind": "clothing",
-      "canonical_id": "set_1_female",
+      "canonical_id": "set_1_variant_1",
       "path": "swf/items/set_01_1.swf",
       "git_blob": "dc6a58232502426ff6ad6a001199cf798bf06dd7",
       "bytes": 9843
@@ -76,14 +76,14 @@
     },
     {
       "kind": "hair",
-      "canonical_id": "hair_1_male",
+      "canonical_id": "hair_1_variant_0",
       "path": "swf/items/hair_01_0.swf",
       "git_blob": "0a2775cd4044b12878dd03d645eb634d9963f8ca",
       "bytes": 4035
     },
     {
       "kind": "hair",
-      "canonical_id": "hair_1_female",
+      "canonical_id": "hair_1_variant_1",
       "path": "swf/items/hair_01_1.swf",
       "git_blob": "c57d6590962843d3789e03fa7dd68b65b6bbb99a",
       "bytes": 6081
