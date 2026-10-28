@@ -18,18 +18,19 @@ MAX_FILES = 20000
 MAX_FILE_BYTES = 32 * 1024 * 1024
 
 PATTERNS = (
-    ("skill-icon-pack", re.compile(r"^skill_icon_(\\d+)-(\\d+)\\.swf$", re.I), "skill_icon_{}"),
-    ("item-icon-pack", re.compile(r"^item_icon_(?:before_)?(\\d+)(?:-(\\d+))?\\.swf$", re.I), "item_icon_{}"),
-    ("skill", re.compile(r"^skill_?(\d+)\.swf$", re.I), "skill_{}"),
-    ("weapon", re.compile(r"^wpn_?(\d+)\.swf$", re.I), "wpn_{}"),
-    ("clothing", re.compile(r"^set_?(\d+)\.swf$", re.I), "set_{}"),
-    ("back", re.compile(r"^back_?(\d+)\.swf$", re.I), "back_{}"),
-    ("accessory", re.compile(r"^(?:acsy|accessory)_?(\d+)\.swf$", re.I), "acsy_{}"),
-    ("hair", re.compile(r"^hair_?(\d+)\.swf$", re.I), "hair_{}"),
-    ("item", re.compile(r"^item_?(\d+)\.swf$", re.I), "item_{}"),
-    ("pet", re.compile(r"^pet_?(\d+)\.swf$", re.I), "pet_{}"),
-    ("enemy", re.compile(r"^(?:ene|enemy)_?(\d+)\.swf$", re.I), "enemy_{}"),
-    ("icon", re.compile(r"^icon_?(\d+)\.swf$", re.I), "icon_{}"),
+    ("skill-icon-pack", re.compile(r"^skill_icon_(\\d+)-(\\d+)\\.swf$", re.I), None),
+    ("item-icon-pack-range", re.compile(r"^item_icon_(\\d+)-(\\d+)\\.swf$", re.I), None),
+    ("item-icon-pack-before", re.compile(r"^item_icon_before_(\\d+)\\.swf$", re.I), None),
+    ("skill", re.compile(r"^skill_?(\\d+)\\.swf$", re.I), "skill_{}"),
+    ("weapon", re.compile(r"^wpn_?(\\d+)\\.swf$", re.I), "wpn_{}"),
+    ("clothing", re.compile(r"^set_?(\\d+)(?:_(\\d+))?\\.swf$", re.I), "set_{}"),
+    ("back", re.compile(r"^back_?(\\d+)\\.swf$", re.I), "back_{}"),
+    ("accessory", re.compile(r"^(?:acsy|accessory)_?(\\d+)\\.swf$", re.I), "acsy_{}"),
+    ("hair", re.compile(r"^hair_?(\\d+)(?:_(\\d+))?\\.swf$", re.I), "hair_{}"),
+    ("item", re.compile(r"^item_?(\\d+)\\.swf$", re.I), "item_{}"),
+    ("pet", re.compile(r"^pet_?(\\d+)\\.swf$", re.I), "pet_{}"),
+    ("enemy", re.compile(r"^(?:ene|enemy)_?(\\d+)\\.swf$", re.I), "enemy_{}"),
+    ("icon", re.compile(r"^icon_?(\\d+)\\.swf$", re.I), "icon_{}"),
 )
 
 LIBRARY_NAMES = {
@@ -51,25 +52,45 @@ def classify(name: str):
 
     for kind, pattern, formatter in PATTERNS:
         match = pattern.match(name)
-        if match:
-            number = str(int(match.group(1)))
-            canonical = formatter.format(number)
-            # Some modular character assets carry a numeric source variant
-            # (for example set_01_0 / set_01_1). Do not infer what that
-            # variant means until metadata confirms it.
-            if kind in {"skill-icon-pack", "item-icon-pack"}:
-                if match.lastindex and match.lastindex >= 2 and match.group(2) is not None:
-                    canonical += "_to_" + str(int(match.group(2)))
-            elif match.lastindex and match.lastindex >= 2 and match.group(2) is not None:
-                canonical += "_variant_" + str(int(match.group(2)))
+        if not match:
+            continue
+
+        first = str(int(match.group(1)))
+
+        if kind == "skill-icon-pack":
             return {
-                "kind": kind,
+                "kind": "skill-icon-pack",
                 "source_id": name[:-4],
-                "canonical_id": canonical,
+                "canonical_id": f"skill_icon_{first}_to_{int(match.group(2))}",
             }
 
-    return None
+        if kind == "item-icon-pack-range":
+            return {
+                "kind": "item-icon-pack",
+                "source_id": name[:-4],
+                "canonical_id": f"item_icon_{first}_to_{int(match.group(2))}",
+            }
 
+        if kind == "item-icon-pack-before":
+            return {
+                "kind": "item-icon-pack",
+                "source_id": name[:-4],
+                "canonical_id": f"item_icon_before_{first}",
+            }
+
+        canonical = formatter.format(first)
+        if match.lastindex and match.lastindex >= 2 and match.group(2) is not None:
+            # Numeric source variants are preserved without guessing whether
+            # they mean gender, stance, generation, or another client concern.
+            canonical += "_variant_" + str(int(match.group(2)))
+
+        return {
+            "kind": kind,
+            "source_id": name[:-4],
+            "canonical_id": canonical,
+        }
+
+    return None
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
