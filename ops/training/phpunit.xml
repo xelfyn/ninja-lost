@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="../../vendor/autoload.php" colors="true" failOnWarning="true" failOnRisky="true">
+  <php><env name="NL_EVALUATION_GATEWAY" value="true" force="true"/><env name="NL_TRAINING" value="true" force="true"/></php>
+  <testsuites><testsuite name="Training"><file>TrainingTest.php</file></testsuite></testsuites>
+</phpunit>
