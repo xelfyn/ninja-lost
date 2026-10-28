@@ -12,7 +12,7 @@ concurrency:
 jobs:
   content:
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
+    timeout-minutes: 12
     services:
       mysql:
         image: mysql:8.4
@@ -47,11 +47,14 @@ jobs:
           extensions: mbstring, intl, pdo_mysql, bcmath, gd, zip
           tools: composer:v2
           coverage: none
-      - name: Decoder and scoped catalogue regressions
+      - name: Decoder catalogue and publication contracts
         run: |
           python3 -m unittest discover -s ops/combat-data -p 'test_*.py' -v
-          node --test ops/combat-data/catalog.test.cjs
-          php -l app/Services/Combat/CombatLoadout.php
+          node --test ops/combat-data/catalog.test.cjs ops/content-studio/catalog.test.cjs
+          find app/Content app/Services/Content ops/content-studio -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l app/Filament/Pages/ContentStudio.php
+          node --check ops/content-studio/browser.cjs
+          bash -n ops/content-studio/browser.sh
       - name: Pinned read-only metadata and source intake
         run: |
           python3 ops/combat-data/inspect.py "$RUNNER_TEMP/nl-combat-data"
@@ -67,14 +70,20 @@ jobs:
           echo "APP_KEY=$key" >> "$GITHUB_ENV"
       - name: Existing locked runtime and isolated MySQL
         run: |
-          bash ops/runtime/setup-ci.sh > "$RUNNER_TEMP/g8f-setup.log" 2>&1 || { tail -n 100 "$RUNNER_TEMP/g8f-setup.log"; exit 1; }
+          bash ops/runtime/setup-ci.sh > "$RUNNER_TEMP/content-setup.log" 2>&1 || { tail -n 100 "$RUNNER_TEMP/content-setup.log"; exit 1; }
           composer dump-autoload --optimize --strict-psr --no-scripts --no-plugins --no-interaction
-      - name: Database ownership admission and actual engine bridge
+      - name: Existing DB ownership and engine bridge regression
         run: vendor/bin/phpunit -c ops/combat-data/phpunit.xml --testdox
+      - name: Draft release activation rollback and published engine mechanics
+        run: vendor/bin/phpunit -c ops/content-studio/phpunit.xml --testdox
+      - name: Concurrent editing publishing and activation
+        run: php ops/content-studio/race.php
+      - name: Actual Content Studio browser to registry grant and engine
+        run: bash ops/content-studio/browser.sh
       - name: Remove owned temporary metadata and record limits
         if: always()
         env:
           RESULT: ${{ job.status }}
         run: |
           rm -rf -- "$RUNNER_TEMP/nl-combat-data" "$RUNNER_TEMP/nl-combat-engine"
-          printf '## Combat data and owned loadout\nResult: %s\nRevision: `%s`\n\nSource metadata read only; no community DB import, rights approval, native client, persistent duel/reward bridge, UI work or artifact upload. Actual DB-owned snapshots use self-authored mechanics in a source-engine CI duel.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          printf '## Combat data and Content Studio\nResult: %s\nRevision: `%s`\n\nEvaluation-only authoring/publishing of five skill effect primitives. No community DB/assets import, arbitrary code/SWF upload, native client/animation validation, persistent battle/reward bridge, production deployment or artifact upload. UI visual refactor remains deferred.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
