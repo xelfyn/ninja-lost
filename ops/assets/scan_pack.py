@@ -41,7 +41,7 @@ LIBRARY_NAMES = {
 }
 
 
-def classify(name: str):
+def classify(name: str, relative: str = ""):
     lowered = name.lower()
     if lowered in LIBRARY_NAMES:
         return {
@@ -127,7 +127,7 @@ def scan(root: Path) -> dict:
         if size <= 0 or size > MAX_FILE_BYTES:
             raise ValueError(f"invalid SWF size: {relative}")
 
-        identity = classify(path.name)
+        identity = classify(path.name, relative)
         if identity is None:
             ignored += 1
             continue
