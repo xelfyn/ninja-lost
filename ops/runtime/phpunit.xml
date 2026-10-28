@@ -2,7 +2,8 @@
 <phpunit bootstrap="../../vendor/autoload.php" colors="false" cacheResult="false">
  <testsuites>
   <testsuite name="MB01 integration"><file>AdminRuntimeTest.php</file></testsuite>
-  <testsuite name="Private preview origin policy"><file>PreviewOriginTest.php</file></testsuite>\n  <testsuite name="Game asset registry"><file>GameAssetRegistryTest.php</file></testsuite>
+  <testsuite name="Private preview origin policy"><file>PreviewOriginTest.php</file></testsuite>
+  <testsuite name="Game asset registry"><file>GameAssetRegistryTest.php</file></testsuite>
  </testsuites>
  <php><env name="APP_ENV" value="testing"/><env name="SESSION_DRIVER" value="array"/><env name="CACHE_STORE" value="array"/></php>
 </phpunit>
