@@ -2,6 +2,7 @@ import copy
 import importlib.util
 import json
 from pathlib import Path
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,6 +67,46 @@ class AssetFetchTest(unittest.TestCase):
             INSTALL.safe_member("../ffdec.jar")
         with self.assertRaisesRegex(ValueError, "unsafe archive"):
             INSTALL.safe_member("/absolute/ffdec.jar")
+
+    def test_existing_ffdec_installation_revalidates_all_recorded_files(self):
+        entry = INSTALL.load_lock(ROOT / "ops" / "assets" / "tool-lock.json")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "lib").mkdir()
+            (root / "ffdec.jar").write_bytes(b"ffdec-jar")
+            (root / "lib" / "dependency.jar").write_bytes(b"dependency")
+            files = INSTALL.installation_inventory(root)
+            (root / "install.json").write_text(json.dumps({
+                "version": entry["version"],
+                "archive_sha256": entry["sha256"],
+                "source": entry["url"],
+                "files": files,
+            }))
+
+            self.assertEqual(
+                INSTALL.verify_existing_installation(root, entry),
+                root / "ffdec.jar",
+            )
+
+            (root / "ffdec.jar").write_bytes(b"tampered")
+            with self.assertRaisesRegex(ValueError, "installed bytes"):
+                INSTALL.verify_existing_installation(root, entry)
+
+    def test_existing_ffdec_installation_rejects_symlink_dependency(self):
+        entry = INSTALL.load_lock(ROOT / "ops" / "assets" / "tool-lock.json")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            outside = root / "outside.jar"
+            outside.write_bytes(b"outside")
+            (root / "ffdec.jar").write_bytes(b"ffdec-jar")
+            link = root / "dependency.jar"
+            try:
+                link.symlink_to(outside)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlink unavailable")
+
+            with self.assertRaisesRegex(ValueError, "symlink"):
+                INSTALL.installation_inventory(root)
 
 
 if __name__ == "__main__":

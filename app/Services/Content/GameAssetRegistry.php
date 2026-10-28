@@ -55,10 +55,22 @@ final class GameAssetRegistry
             return $this->withoutUrl($record, 'missing');
         }
 
-        $candidate = realpath($root.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $webPath));
+        $requested = $root.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $webPath);
+
+        // Never serve aliases. Besides traversal concerns, a .png symlink can
+        // otherwise point at SWF bytes while passing an extension-only check.
+        if (is_link($requested)) {
+            return $this->withoutUrl($record, 'unsupported');
+        }
+
+        $candidate = realpath($requested);
 
         if ($candidate === false || ! str_starts_with($candidate, $root.DIRECTORY_SEPARATOR) || ! is_file($candidate)) {
             return $this->withoutUrl($record, 'missing');
+        }
+
+        if (! $this->matchesWebSignature($candidate, $extension)) {
+            return $this->withoutUrl($record, 'unsupported');
         }
 
         $prefix = rtrim((string) config('ninja_assets.public_prefix', '/game-assets'), '/');
@@ -117,6 +129,34 @@ final class GameAssetRegistry
         }
 
         return preg_match('/\A[a-zA-Z0-9][a-zA-Z0-9_.\/-]{0,255}\z/D', $path) === 1;
+    }
+
+    private function matchesWebSignature(string $path, string $extension): bool
+    {
+        $handle = @fopen($path, 'rb');
+
+        if ($handle === false) {
+            return false;
+        }
+
+        try {
+            $header = fread($handle, 12);
+        } finally {
+            fclose($handle);
+        }
+
+        if (! is_string($header)) {
+            return false;
+        }
+
+        return match ($extension) {
+            'png' => str_starts_with($header, "\x89PNG\r\n\x1a\n"),
+            'jpg', 'jpeg' => str_starts_with($header, "\xFF\xD8\xFF"),
+            'webp' => strlen($header) >= 12
+                && substr($header, 0, 4) === 'RIFF'
+                && substr($header, 8, 4) === 'WEBP',
+            default => false,
+        };
     }
 
     private function withoutUrl(array $record, string $status): array

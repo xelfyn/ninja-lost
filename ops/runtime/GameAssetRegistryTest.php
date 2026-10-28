@@ -58,7 +58,7 @@ final class GameAssetRegistryTest extends TestCase
     public function test_reviewed_web_derivative_is_resolved_inside_public_root(): void
     {
         File::makeDirectory($this->publicRoot.'/skills', 0700, true);
-        File::put($this->publicRoot.'/skills/skill_1.png', 'reviewed-png');
+        File::put($this->publicRoot.'/skills/skill_1.png', "\x89PNG\r\n\x1a\nfixture");
 
         $this->writeManifest([
             'skill' => [
@@ -116,6 +116,48 @@ final class GameAssetRegistryTest extends TestCase
         $this->assertNull($asset['url']);
     }
 
+    public function test_disguised_swf_bytes_with_png_extension_are_refused(): void
+    {
+        File::put($this->publicRoot.'/fake.png', 'FWS-not-a-png');
+        $this->writeManifest([
+            'skill' => [
+                'skill_6' => [
+                    'source_id' => 'skill_6',
+                    'web_path' => 'fake.png',
+                ],
+            ],
+        ]);
+
+        $asset = $this->registry()->find('skill', 'skill_6');
+
+        $this->assertSame('unsupported', $asset['visual_status']);
+        $this->assertNull($asset['url']);
+    }
+
+    public function test_symlink_png_alias_to_swf_inside_root_is_refused(): void
+    {
+        File::put($this->publicRoot.'/source.swf', 'FWS-source');
+        $link = $this->publicRoot.'/alias.png';
+
+        if (! @symlink($this->publicRoot.'/source.swf', $link)) {
+            $this->markTestSkipped('symlink unavailable');
+        }
+
+        $this->writeManifest([
+            'skill' => [
+                'skill_7' => [
+                    'source_id' => 'skill_7',
+                    'web_path' => 'alias.png',
+                ],
+            ],
+        ]);
+
+        $asset = $this->registry()->find('skill', 'skill_7');
+
+        $this->assertSame('unsupported', $asset['visual_status']);
+        $this->assertNull($asset['url']);
+    }
+
     public function test_traversal_and_invalid_identifiers_are_refused(): void
     {
         $this->writeManifest([
@@ -138,7 +180,7 @@ final class GameAssetRegistryTest extends TestCase
     public function test_symlink_escape_is_not_served(): void
     {
         $outside = $this->root.'/outside.png';
-        File::put($outside, 'outside');
+        File::put($outside, "\x89PNG\r\n\x1a\noutside");
         $link = $this->publicRoot.'/linked.png';
 
         if (! @symlink($outside, $link)) {
@@ -156,7 +198,7 @@ final class GameAssetRegistryTest extends TestCase
 
         $asset = $this->registry()->find('skill', 'skill_5');
 
-        $this->assertSame('missing', $asset['visual_status']);
+        $this->assertSame('unsupported', $asset['visual_status']);
         $this->assertNull($asset['url']);
     }
 

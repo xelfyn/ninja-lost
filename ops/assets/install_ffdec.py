@@ -6,8 +6,9 @@ The installer:
 - downloads only the locked GitHub release URL;
 - validates byte length and SHA-256;
 - safely extracts the archive;
-- never commits the tool or modifies application code;
-- is idempotent when the existing installation marker matches.
+- inventories every installed regular file with SHA-256;
+- revalidates those installed bytes before any later reuse;
+- never commits the tool or modifies application code.
 """
 
 from __future__ import annotations
@@ -28,6 +29,8 @@ ALLOWED_REDIRECT_HOSTS = {
     "release-assets.githubusercontent.com",
     "github-production-release-asset-2e65be.s3.amazonaws.com",
 }
+MAX_INSTALL_FILES = 5000
+MAX_INSTALL_BYTES = 64 * 1024 * 1024
 
 
 class GuardedRedirect(urllib.request.HTTPRedirectHandler):
@@ -63,26 +66,77 @@ def safe_member(name: str) -> PurePosixPath:
     return member
 
 
-def install(lock_path: Path, destination: Path) -> Path:
-    entry = load_lock(lock_path)
-    destination = destination.resolve()
+def hash_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def installation_inventory(root: Path) -> list[dict]:
+    root = root.resolve(strict=True)
+    rows = []
+    total = 0
+
+    for path in sorted(root.rglob("*")):
+        if path.name == "install.json":
+            continue
+        if path.is_symlink():
+            raise ValueError("symlink in FFDec installation")
+        if not path.is_file():
+            continue
+
+        size = path.stat().st_size
+        total += size
+        if len(rows) >= MAX_INSTALL_FILES or total > MAX_INSTALL_BYTES:
+            raise ValueError("FFDec installation exceeded bounds")
+
+        rows.append({
+            "path": path.relative_to(root).as_posix(),
+            "bytes": size,
+            "sha256": hash_file(path),
+        })
+
+    if not rows or not any(row["path"] == "ffdec.jar" for row in rows):
+        raise ValueError("FFDec installation missing ffdec.jar")
+
+    return rows
+
+
+def verify_existing_installation(destination: Path, entry: dict) -> Path:
+    destination = destination.resolve(strict=True)
     marker = destination / "install.json"
     jar = destination / "ffdec.jar"
 
-    if marker.is_file() and jar.is_file():
-        try:
-            current = json.loads(marker.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            current = {}
-        if (
-            current.get("version") == entry["version"]
-            and current.get("sha256") == entry["sha256"]
-        ):
-            return jar
+    if marker.is_symlink() or not marker.is_file() or jar.is_symlink() or not jar.is_file():
+        raise ValueError("existing FFDec installation is incomplete")
+
+    try:
+        current = json.loads(marker.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError("existing FFDec marker is invalid") from exc
+
+    if (
+        current.get("version") != entry["version"]
+        or current.get("archive_sha256") != entry["sha256"]
+        or not isinstance(current.get("files"), list)
+    ):
         raise ValueError("existing FFDec installation does not match lock")
 
+    actual = installation_inventory(destination)
+    if actual != current["files"]:
+        raise ValueError("existing FFDec installed bytes do not match marker")
+
+    return jar
+
+
+def install(lock_path: Path, destination: Path) -> Path:
+    entry = load_lock(lock_path)
+    destination = destination.resolve()
+
     if destination.exists():
-        raise ValueError("destination must be empty or an exact existing installation")
+        return verify_existing_installation(destination, entry)
 
     destination.parent.mkdir(parents=True, exist_ok=True)
     temp_root = destination.with_name(destination.name + ".tmp")
@@ -122,9 +176,6 @@ def install(lock_path: Path, destination: Path) -> Path:
             for info in zf.infolist():
                 member = safe_member(info.filename)
                 target = extract_root.joinpath(*member.parts)
-                resolved_parent = target.parent.resolve()
-                if not str(resolved_parent).startswith(str(extract_root.resolve())):
-                    raise ValueError("archive path escaped destination")
                 if info.is_dir():
                     target.mkdir(parents=True, exist_ok=True)
                     continue
@@ -138,12 +189,14 @@ def install(lock_path: Path, destination: Path) -> Path:
 
         final_root = temp_root / "final"
         shutil.copytree(candidates[0].parent, final_root)
+        files = installation_inventory(final_root)
         (final_root / "install.json").write_text(
             json.dumps(
                 {
                     "version": entry["version"],
-                    "sha256": entry["sha256"],
+                    "archive_sha256": entry["sha256"],
                     "source": entry["url"],
+                    "files": files,
                 },
                 indent=2,
                 sort_keys=True,
@@ -151,9 +204,10 @@ def install(lock_path: Path, destination: Path) -> Path:
             + "\n",
             encoding="utf-8",
         )
+
         destination.parent.mkdir(parents=True, exist_ok=True)
         final_root.rename(destination)
-        return destination / "ffdec.jar"
+        return verify_existing_installation(destination, entry)
     finally:
         if temp_root.exists():
             shutil.rmtree(temp_root, ignore_errors=True)
