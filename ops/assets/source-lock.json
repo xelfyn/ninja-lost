@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "repository": "shenjai47/NinjaSaga",
+  "commit": "39bcd9a2ee4bd653e87ba1cbf6697de21f3a2107",
+  "purpose": "Private evaluation intake for original-game visual compatibility. No redistribution or rights claim.",
+  "files": [
+    {
+      "kind": "skill",
+      "canonical_id": "skill_1",
+      "path": "swf/skills/skill_01.swf",
+      "git_blob": "260e7bda142afde0b7f57621645b4a90a8f8ab33",
+      "bytes": 63876
+    },
+    {
+      "kind": "skill",
+      "canonical_id": "skill_2",
+      "path": "swf/skills/skill_02.swf",
+      "git_blob": "e4a55b8f63bf6f6c5ff40a4cb49f693407b473af",
+      "bytes": 47540
+    },
+    {
+      "kind": "skill",
+      "canonical_id": "skill_3",
+      "path": "swf/skills/skill_03.swf",
+      "git_blob": "81cb0b403a0ae421067f870f7cbea34d658e863e",
+      "bytes": 47681
+    },
+    {
+      "kind": "skill",
+      "canonical_id": "skill_4",
+      "path": "swf/skills/skill_04.swf",
+      "git_blob": "57c819470ae2f456d6f256e891fc38d39c680a7d",
+      "bytes": 47824
+    },
+    {
+      "kind": "skill",
+      "canonical_id": "skill_5",
+      "path": "swf/skills/skill_05.swf",
+      "git_blob": "ce08e695e9c0e209e677e647ad8cb25e8f138bf0",
+      "bytes": 72443
+    },
+    {
+      "kind": "weapon",
+      "canonical_id": "wpn_1",
+      "path": "swf/items/wpn_01.swf",
+      "git_blob": "d90a2ad5d88002a81a4cd3790ba183626dade216",
+      "bytes": 2528
+    },
+    {
+      "kind": "clothing",
+      "canonical_id": "set_1_male",
+      "path": "swf/items/set_01_0.swf",
+      "git_blob": "c57bed595cc027d1066e3a804db79fd884088055",
+      "bytes": 9858
+    },
+    {
+      "kind": "clothing",
+      "canonical_id": "set_1_female",
+      "path": "swf/items/set_01_1.swf",
+      "git_blob": "dc6a58232502426ff6ad6a001199cf798bf06dd7",
+      "bytes": 9843
+    },
+    {
+      "kind": "back",
+      "canonical_id": "back_1",
+      "path": "swf/items/back_01.swf",
+      "git_blob": "410ecec1eb2872bd1b4b0a4035ec0c125b129a8f",
+      "bytes": 3931
+    },
+    {
+      "kind": "accessory",
+      "canonical_id": "acsy_1",
+      "path": "swf/items/acsy_01.swf",
+      "git_blob": "b5819d21d1361e246f4f52a036c24962f2492f52",
+      "bytes": 3936
+    },
+    {
+      "kind": "hair",
+      "canonical_id": "hair_1_male",
+      "path": "swf/items/hair_01_0.swf",
+      "git_blob": "0a2775cd4044b12878dd03d645eb634d9963f8ca",
+      "bytes": 4035
+    },
+    {
+      "kind": "hair",
+      "canonical_id": "hair_1_female",
+      "path": "swf/items/hair_01_1.swf",
+      "git_blob": "c57d6590962843d3789e03fa7dd68b65b6bbb99a",
+      "bytes": 6081
+    },
+    {
+      "kind": "pet",
+      "canonical_id": "pet_101",
+      "path": "swf/pets/pet_101.swf",
+      "git_blob": "9a614edd77864957af6ca861223e5729d506e658",
+      "bytes": 382925
+    },
+    {
+      "kind": "library",
+      "canonical_id": "data-library",
+      "path": "swf/language/data_library_en.swf",
+      "git_blob": "be8fd31d45fbeac0b4957fa83a376af300654e99",
+      "bytes": 850896
+    }
+  ]
+}
