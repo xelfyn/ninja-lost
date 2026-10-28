@@ -101,6 +101,20 @@
       "path": "swf/language/data_library_en.swf",
       "git_blob": "be8fd31d45fbeac0b4957fa83a376af300654e99",
       "bytes": 850896
+    },
+    {
+      "kind": "skill-icon-pack",
+      "canonical_id": "skill_icon_1_10",
+      "path": "swf/library/icons/skill_icon_1-10.swf",
+      "git_blob": "17cf3bee5b62eb4a101b60ffcb8c1c8f20b24950",
+      "bytes": 28278
+    },
+    {
+      "kind": "item-icon-pack",
+      "canonical_id": "item_icon_before_801",
+      "path": "swf/library/item_icons/item_icon_before_801.swf",
+      "git_blob": "1f1978bcad32d22c59161c6ba407537c924c00a9",
+      "bytes": 361514
     }
   ]
 }
