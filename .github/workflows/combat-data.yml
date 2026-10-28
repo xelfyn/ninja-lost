@@ -52,12 +52,14 @@ jobs:
           python3 -m unittest discover -s ops/combat-data -p 'test_*.py' -v
           python3 -m unittest discover -s ops/combat -p 'test_*.py' -v
           node --test ops/combat-data/catalog.test.cjs ops/content-studio/catalog.test.cjs
-          find app/Content app/Services/Content ops/content-studio ops/equipment-studio -name '*.php' -print0 | xargs -0 -n1 php -l
+          find app/Content app/Services/Content app/Evaluation ops/content-studio ops/equipment-studio ops/training -name '*.php' -print0 | xargs -0 -n1 php -l
           php -l app/Filament/Pages/ContentStudio.php
           php -l app/Filament/Pages/EquipmentStudio.php
           php -l app/Services/Combat/CombatLoadout.php
           node --check ops/content-studio/browser.cjs
           node --check ops/equipment-studio/browser.cjs
+          node --check ops/training/browser.cjs
+          node --check public/js/training-client.js
           bash -n ops/content-studio/browser.sh
       - name: Pinned read-only metadata and source intake
         env:
@@ -70,7 +72,7 @@ jobs:
       - name: Real catalogue validation and source-engine skill execution
         run: |
           node ops/combat-data/corpus.cjs
-          node --test ops/equipment-studio/stats.test.cjs
+          node --test ops/equipment-studio/stats.test.cjs ops/training/engine.test.cjs
       - name: Ephemeral key
         run: |
           key="base64:$(openssl rand -base64 32)"
@@ -86,11 +88,18 @@ jobs:
         run: vendor/bin/phpunit -c ops/content-studio/phpunit.xml --testdox
       - name: Equipment bundle ownership set bonus and actual source engine
         run: vendor/bin/phpunit -c ops/equipment-studio/phpunit.xml --testdox
+      - name: Persisted authoritative training and route gates
+        run: |
+          vendor/bin/phpunit -c ops/training/phpunit.xml --testdox
+          NL_EVALUATION_GATEWAY=false NL_TRAINING=true APP_ENV=local php ops/training/check-gate.php disabled
+          NL_EVALUATION_GATEWAY=true NL_TRAINING=false APP_ENV=local php ops/training/check-gate.php disabled
+          NL_EVALUATION_GATEWAY=true NL_TRAINING=true APP_ENV=production php ops/training/check-gate.php disabled
+          NL_EVALUATION_GATEWAY=true NL_TRAINING=true APP_ENV=local php ops/training/check-gate.php enabled
       - name: Concurrent editing publishing and activation
         run: |
           php ops/content-studio/race.php
           php ops/equipment-studio/race.php
-      - name: Actual skill and equipment browsers to shared economy and source engine
+      - name: Actual skill equipment and training browser loops
         run: bash ops/content-studio/browser.sh
       - name: Remove owned temporary metadata and record limits
         if: always()
@@ -98,4 +107,4 @@ jobs:
           RESULT: ${{ job.status }}
         run: |
           rm -rf -- "$RUNNER_TEMP/nl-combat-data" "$RUNNER_TEMP/nl-combat-engine"
-          printf '## Combat data and Content Studio\nResult: %s\nRevision: `%s`\n\nEvaluation-only skill and equipment/set publication with actual pinned source engine. No community DB/assets import, code/SWF upload, native-client/animation verification, durable combat/reward bridge, production deployment or artifact upload. UI visual refactor remains deferred.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          printf '## Combat data, Content Studio and training\nResult: %s\nRevision: `%s`\n\nOpt-in loopback paused mirror training reuses pinned Battle/StatsCalc, owned content and existing economy. No mission reward verifier, live PvP, native client, animation/assets import, production deployment or artifact upload. UI visual refactor remains deferred.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"

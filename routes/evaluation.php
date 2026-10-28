@@ -22,3 +22,5 @@ if (GatewayAccess::enabled()) {
         Route::post('/purchases', [PlayerGateway::class, 'purchase']);
     });
 }
+
+require __DIR__.'/training.php';
