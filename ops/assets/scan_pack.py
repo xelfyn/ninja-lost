@@ -51,10 +51,16 @@ def classify(name: str):
         match = pattern.match(name)
         if match:
             number = str(int(match.group(1)))
+            canonical = formatter.format(number)
+            # Some modular character assets carry a numeric source variant
+            # (for example set_01_0 / set_01_1). Do not infer what that
+            # variant means until metadata confirms it.
+            if match.lastindex and match.lastindex >= 2 and match.group(2) is not None:
+                canonical += "_variant_" + str(int(match.group(2)))
             return {
                 "kind": kind,
                 "source_id": name[:-4],
-                "canonical_id": formatter.format(number),
+                "canonical_id": canonical,
             }
 
     return None
