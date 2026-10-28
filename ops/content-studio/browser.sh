@@ -15,3 +15,5 @@ timeout --kill-after=10s 240s node ops/content-studio/browser.cjs
 export NL_QA_STATE="$qa_root/equipment-state.json"
 timeout --kill-after=10s 240s node ops/equipment-studio/browser.cjs
 timeout --kill-after=10s 240s node ops/training/browser.cjs
+APP_ENV=local CACHE_STORE=file timeout --kill-after=5s 75s php ops/trials/login-preflight.php
+timeout --kill-after=10s 240s node ops/trials/browser.cjs

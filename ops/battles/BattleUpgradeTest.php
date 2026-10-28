@@ -26,7 +26,8 @@ final class BattleUpgradeTest extends TestCase
             DB::statement('CREATE DATABASE `'.$database.'` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'); $created = true;
             config(['database.connections.mysql.database' => $database]); DB::purge('mysql');
             $migration = base_path('database/migrations/2026_10_28_000003_add_battle_settlement.php');
-            $paths = array_values(array_filter(glob(base_path('database/migrations/*.php')), fn ($p) => $p !== $migration));
+            // Build the actual pre-battle schema, not later child tables referencing a missing parent.
+            $paths = array_values(array_filter(glob(base_path('database/migrations/*.php')), fn ($p) => strcmp(basename($p), basename($migration)) < 0));
             $this->assertSame(0, Artisan::call('migrate', ['--path' => $paths, '--realpath' => true, '--force' => true]));
             $create = fn ($role) => User::create(['name' => 'QA battle upgrade', 'username' => 'qa_'.bin2hex(random_bytes(8)), 'email' => bin2hex(random_bytes(8)).'@example.invalid', 'password' => bin2hex(random_bytes(24)), 'account_type' => $role, 'tokens' => 0]);
             $admin = $create(99); $player = $create(0); $c = Character::create(['user_id' => $player->id, 'name' => 'QA Upgrade Character', 'gold' => 0]);
