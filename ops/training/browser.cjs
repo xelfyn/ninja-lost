@@ -4,6 +4,7 @@ const {chromium} = require('playwright'), assert = require('node:assert/strict')
 const {spawn, execFileSync} = require('node:child_process');
 const {once} = require('node:events');
 const crypto = require('node:crypto'), fs = require('node:fs'), path = require('node:path');
+const clientProbes = require('./client-probes.cjs');
 const ROOT = path.resolve(__dirname, '../..'), PUBLIC = path.join(ROOT, 'public'), BASE = 'http://127.0.0.1:8003', API = BASE + '/evaluation/v1', TRAIN = API + '/training';
 assert.equal(process.env.CI, 'true'); assert.equal(process.env.DB_DATABASE, 'ninja_lost_eval');
 const password = crypto.randomBytes(24).toString('hex');
@@ -76,10 +77,11 @@ async function main() {
   assert.equal(fixture('verify').revision, 4); await page.unroute(actionUrl); await page.reload({waitUntil: 'networkidle'});
   await waitRevision(page, 4); await page.getByRole('button', {name: 'Ulangi permintaan yang sama', exact: true}).click();
   await page.locator('#notice').filter({hasText: 'tidak ada aksi tambahan'}).waitFor(); assert.equal(fixture('verify').revision, 4); intentionalDisconnect = false;
+  await clientProbes(page, TRAIN, f); assert.equal(fixture('verify').revision, 5);
   await health(page); await screenshot(page, 'training-desktop');
-  await stopServer(); await startServer(); await page.reload({waitUntil: 'networkidle'}); await waitRevision(page, 4);
+  await stopServer(); await startServer(); await page.reload({waitUntil: 'networkidle'}); await waitRevision(page, 5);
   const mobile = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true}), phone = await mobile.newPage(); observe(phone);
-  await login(phone, f.username); await waitRevision(phone, 4); await health(phone); await screenshot(phone, 'training-mobile');
+  await login(phone, f.username); await waitRevision(phone, 5); await health(phone); await screenshot(phone, 'training-mobile');
   console.log('PASS training-recovery: response lost after committed action -> reload -> retry original intent without duplicate; PHP process restart and independent mobile session resume persisted battle');
   for (let n = 0; n < 40; n++) {
     const status = await page.locator('#run-status').innerText(); if (status.startsWith('ended')) break;

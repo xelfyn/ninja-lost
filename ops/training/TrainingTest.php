@@ -1,5 +1,6 @@
 <?php
 
+use App\Content\SkillBlueprint;
 use App\Evaluation\GatewayAccess;
 use App\Evaluation\TrainingService;
 use App\Models\User;
@@ -109,8 +110,16 @@ final class TrainingTest extends TestCase
     {
         $before = $this->service()->loadout($this->player, $this->character->id); $economy = $this->economy();
         $this->invalid(fn () => $this->save(['skill_nl_not_owned'], ['weapon' => '', 'back' => '']));
-        $this->assertSame($before, $this->service()->loadout($this->player, $this->character->id)); $this->assertSame($economy, $this->economy());
-        $this->invalid(fn () => $this->save([$this->skill, $this->skill]));
+        // Compare exact wire values, not the identity of freshly queried stdClass row objects.
+        $this->assertSame(SkillBlueprint::json($before), SkillBlueprint::json($this->service()->loadout($this->player, $this->character->id)));
+        $this->assertSame($economy, $this->economy()); $this->invalid(fn () => $this->save([$this->skill, $this->skill]));
+    }
+    public function test_literal_wildcard_field_cannot_enter_the_loadout_contract(): void
+    {
+        $before = $this->economy();
+        $this->invalid(fn () => $this->service()->saveLoadout($this->player, $this->character->id, ['revision' => StateRevision::current($this->player->id),
+            'equipment' => ['weapon' => ''], 'skills' => [], 'skills.*' => 'unexpected']));
+        $this->assertSame($before, $this->economy());
     }
     public function test_active_training_is_pinned_across_unequip_and_new_studio_release(): void
     {
@@ -172,7 +181,8 @@ final class TrainingTest extends TestCase
         $this->getJson($url)->assertUnauthorized();
         $this->actingAs($this->player)->withSession(['nl_gateway_auth' => GatewayAccess::stamp($this->player)])->getJson($url)->assertOk()->assertJsonPath('character_id', $this->character->id);
         config(['training.enabled' => false]); $this->getJson($url)->assertNotFound();
-        config(['training.enabled' => true]); $this->app->instance('env', 'production'); $this->getJson($url)->assertNotFound();
+        config(['training.enabled' => true]); $this->app->instance('env', 'production');
+        try { $this->getJson($url)->assertNotFound(); } finally { $this->app->instance('env', 'testing'); }
     }
     public function test_engine_failure_does_not_create_an_empty_battle(): void
     {
