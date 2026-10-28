@@ -104,7 +104,7 @@
     },
     {
       "kind": "skill-icon-pack",
-      "canonical_id": "skill_icon_1_10",
+      "canonical_id": "skill_icon_1_to_10",
       "path": "swf/library/icons/skill_icon_1-10.swf",
       "git_blob": "17cf3bee5b62eb4a101b60ffcb8c1c8f20b24950",
       "bytes": 28278
