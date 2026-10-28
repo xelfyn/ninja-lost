@@ -51,6 +51,20 @@ class AssetScanTest(unittest.TestCase):
             self.assertEqual(report["counts"]["library"], 1)
             self.assertTrue(all(x["visual_status"] == "unprocessed" for x in report["assets"]))
 
+    def test_species_named_pet_files_use_pets_folder_context(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pets = root / "swf" / "pets"
+            pets.mkdir(parents=True)
+            (pets / "cat_1.swf").write_bytes(b"FWS\\x09cat")
+            (pets / "fox_1_e14.swf").write_bytes(b"FWS\\x09fox")
+            report = MODULE.scan(root)
+            self.assertEqual(report["files_recognized"], 2)
+            self.assertEqual(report["counts"]["pet"], 2)
+            ids = {x["canonical_id"] for x in report["assets"]}
+            self.assertIn("pet_asset:cat_1", ids)
+            self.assertIn("pet_asset:fox_1_e14", ids)
+
     def test_unknown_files_are_ignored_not_promoted_to_content(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
