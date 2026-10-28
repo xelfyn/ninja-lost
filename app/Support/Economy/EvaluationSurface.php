@@ -20,6 +20,7 @@ final class EvaluationSurface
         \App\Filament\Pages\ContentRegistry::class,
         \App\Filament\Pages\StaffGrants::class,
         \App\Filament\Pages\ShopOffers::class,
+        \App\Filament\Pages\ContentStudio::class,
     ];
 
     public static function componentAllowed(string $class): bool

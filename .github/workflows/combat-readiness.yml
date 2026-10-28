@@ -17,7 +17,11 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
+      - name: Source-origin authentication boundary
+        run: python3 -m unittest discover -s ops/combat -p 'test_*.py' -v
       - name: Pinned selected text intake and complete-tree metadata audit
+        env:
+          NL_SOURCE_TOKEN: ${{ github.token }}
         run: |
           python3 ops/combat/fetch-source.py "$RUNNER_TEMP/nl-combat-source"
       - name: Syntax and real community engine regression
