@@ -115,7 +115,8 @@ function replay(input, directory = process.env.NL_COMBAT_SOURCE) {
       send(battle.host, command.action, command.action === 'skill' ? {skill_id: command.skill_id} : {});
       check(battle.phase !== 'input' || battle.turnId !== turn, 'Action unavailable'); settle();
     }
-    return {state: state(), previous};
+    // Detach VM-realm arrays/objects at the adapter boundary; retain strict replay comparisons.
+    return structuredClone({state: state(), previous});
   } finally { battle.dispose('adapter_finished'); clock.jobs.clear(); }
 }
 module.exports = {replay, PROTOCOL, MAX_ACTIONS};

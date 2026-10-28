@@ -34,7 +34,8 @@ final class TrainingService
     }
     private function validate(array $input, array $rules): array
     {
-        Validator::make(['d' => $input], ['d' => ['required', 'array:'.implode(',', array_keys($rules))]]
+        $rootKeys = array_filter(array_keys($rules), fn ($key) => !str_contains($key, '.'));
+        Validator::make(['d' => $input], ['d' => ['required', 'array:'.implode(',', $rootKeys)]]
             + array_combine(array_map(fn ($k) => 'd.'.$k, array_keys($rules)), array_values($rules)))->validate();
         return $input;
     }
