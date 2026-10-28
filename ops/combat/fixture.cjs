@@ -50,13 +50,13 @@ function load(name, dependencies, clock, random) {
   }, {filename: name, timeout: 1000});
   return module.exports;
 }
-function fixture({safe = true, scrolls = false, onEnd, level = 10, clock: providedClock} = {}) {
+function fixture({safe = true, scrolls = false, onEnd, level = 10, clock: providedClock, skillData, characters} = {}) {
   const clock = providedClock ?? new Clock();
   const skills = {
     skill_eval_hit: {skill_cp_cost: 20, skill_cooldown: 3, skill_damage: 70, skill_type: 2},
     skill_eval_stun: {skill_cp_cost: 30, skill_cooldown: 4, skill_damage: 10, skill_type: 1},
   };
-  const SkillData = {getSkill: id => { if (!skills[id]) throw new Error('Synthetic skill not found'); return skills[id]; },
+  const SkillData = skillData ?? {getSkill: id => { if (!skills[id]) throw new Error('Synthetic skill not found'); return skills[id]; },
     getSkillEffects: id => id === 'skill_eval_stun' ? [{effect: 'stun', type: 'Debuff', target: 'enemy', duration: 1, amount: 0, chance: 100, effect_name: 'Synthetic Stun', calc_type: 'number'}] : []};
   const random = () => 0.5;
   const stats = load('StatsCalc.js', {'../SkillData': SkillData}, clock, random);
@@ -65,7 +65,8 @@ function fixture({safe = true, scrolls = false, onEnd, level = 10, clock: provid
   const Base = load('Battle.js', {'uuid': {v4: crypto.randomUUID}, '../config': {turnDuration: 30, maxRounds: 50, pvpPointsWin: 1, pvpPointsLose: 1},
     './StatsCalc': stats, './TrophyCalc': {}, '../SkillData': SkillData, '../characterInfo': {buildCharacterInfoPayload: c => ({character: c})}, '../db': db}, clock, random);
   const make = id => ({socket: new Socket(id), character: {id, name: 'Synthetic-' + id, level, rank: 1, point_earth: 0, point_water: 0, point_wind: 0, point_lightning: 0, point_fire: 0, equipment_skills: 'skill_eval_hit,skill_eval_stun'}});
-  const host = make(1), enemy = make(2);
+  if (characters && (!Array.isArray(characters) || characters.length !== 2)) throw new TypeError('Two trusted snapshot characters required');
+  const [host, enemy] = characters ? characters.map(character => ({socket: new Socket(character.id), character: structuredClone(character)})) : [make(1), make(2)];
   const options = {host, enemy, room: {mode: 'evaluation', stage: 'synthetic', allowScrolls: scrolls}, evaluation: true, clock, onEnd};
   const Type = safe ? createSafe(Base) : Base;
   const battle = new Type(options);

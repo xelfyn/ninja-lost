@@ -12,15 +12,69 @@ concurrency:
 jobs:
   content:
     runs-on: ubuntu-24.04
-    timeout-minutes: 4
+    timeout-minutes: 8
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: ninja_lost_eval
+        ports: ['127.0.0.1:3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'false'
+      APP_URL: http://127.0.0.1:8000
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_DATABASE: ninja_lost_eval
+      DB_USERNAME: root
+      DB_PASSWORD: ''
+      SESSION_DRIVER: array
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: log
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - name: Bounded decoder regression
-        run: python3 -m unittest discover -s ops/combat-data -p 'test_*.py' -v
-      - name: Pinned read-only metadata inventory
-        run: python3 ops/combat-data/inspect.py "$RUNNER_TEMP/nl-combat-data"
-      - name: Remove owned temporary metadata
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        with:
+          php-version: '8.4'
+          extensions: mbstring, intl, pdo_mysql, bcmath, gd, zip
+          tools: composer:v2
+          coverage: none
+      - name: Decoder and scoped catalogue regressions
+        run: |
+          python3 -m unittest discover -s ops/combat-data -p 'test_*.py' -v
+          node --test ops/combat-data/catalog.test.cjs
+          php -l app/Services/Combat/CombatLoadout.php
+      - name: Pinned read-only metadata and source intake
+        run: |
+          python3 ops/combat-data/inspect.py "$RUNNER_TEMP/nl-combat-data"
+          python3 ops/combat/fetch-source.py "$RUNNER_TEMP/nl-combat-engine"
+          echo "NL_COMBAT_DATA=$RUNNER_TEMP/nl-combat-data" >> "$GITHUB_ENV"
+          echo "NL_COMBAT_SOURCE=$RUNNER_TEMP/nl-combat-engine" >> "$GITHUB_ENV"
+      - name: Real catalogue validation and source-engine skill execution
+        run: node ops/combat-data/corpus.cjs
+      - name: Ephemeral key
+        run: |
+          key="base64:$(openssl rand -base64 32)"
+          echo "::add-mask::$key"
+          echo "APP_KEY=$key" >> "$GITHUB_ENV"
+      - name: Existing locked runtime and isolated MySQL
+        run: |
+          bash ops/runtime/setup-ci.sh > "$RUNNER_TEMP/g8f-setup.log" 2>&1 || { tail -n 100 "$RUNNER_TEMP/g8f-setup.log"; exit 1; }
+          composer dump-autoload --optimize --strict-psr --no-scripts --no-plugins --no-interaction
+      - name: Database ownership admission and actual engine bridge
+        run: vendor/bin/phpunit -c ops/combat-data/phpunit.xml --testdox
+      - name: Remove owned temporary metadata and record limits
         if: always()
-        run: rm -rf -- "$RUNNER_TEMP/nl-combat-data"
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          rm -rf -- "$RUNNER_TEMP/nl-combat-data" "$RUNNER_TEMP/nl-combat-engine"
+          printf '## Combat data and owned loadout\nResult: %s\nRevision: `%s`\n\nSource metadata read only; no community DB import, rights approval, native client, persistent duel/reward bridge, UI work or artifact upload. Actual DB-owned snapshots use self-authored mechanics in a source-engine CI duel.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
