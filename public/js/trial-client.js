@@ -27,6 +27,11 @@
     return result;
   }
   function option(value, label) { const node = document.createElement('option'); node.value = value; node.textContent = label; return node; }
+  function definitions(data) {
+    const selected = $('trial').value;
+    $('trial').replaceChildren(...data.filter(t => t.wins < t.win_limit).map(t => option(t.id, `${t.title} · ${t.gold} gold / ${t.xp} XP · ${t.wins}/${t.win_limit}`)));
+    if ([...$('trial').options].some(o => o.value === selected)) $('trial').value = selected;
+  }
   function render(trial) {
     if (current && trial && current.battle_id === trial.battle_id && trial.run.revision < current.run.revision) return;
     current = trial; $('battle').hidden = !trial;
@@ -52,10 +57,10 @@
   async function refresh() {
     const selected = $('character').value, revision = ++epoch;
     if (!selected) return;
-    const [gear, last] = await Promise.all([request(`${base}/training/characters/${selected}/loadout`), request(`${apiRoot}/characters/${selected}/latest`)]);
+    const [gear, last, rules] = await Promise.all([request(`${base}/training/characters/${selected}/loadout`), request(`${apiRoot}/characters/${selected}/latest`), request(apiRoot + '/definitions')]);
     if (revision !== epoch || selected !== $('character').value) return;
     loadout = gear; $('loadout').textContent = `Revision akun ${gear.revision} · ${gear.skills.length} skill terpasang. Ubah loadout pada halaman training sebelum mulai.`;
-    render(last.trial); controls();
+    definitions(rules.data); render(last.trial); controls();
   }
   function pathFor(intent) {
     if (intent.kind === 'start') return apiRoot + '/runs';
@@ -64,8 +69,17 @@
   }
   async function submit() {
     if (busy || !pending) return; busy = true; ++epoch; controls();
-    try { const result = await request(pathFor(pending), pending.body); journal(null); render(result.trial); notice(result.replayed ? 'Receipt asli dipulihkan; tidak diproses dua kali.' : 'Tersimpan di server.'); }
-    catch (e) {
+    const intent = pending;
+    try {
+      const result = await request(pathFor(intent), intent.body);
+      render(result.trial);
+      if (intent.kind === 'finish') {
+        // Settlement changes account revision and quota. Keep mutation controls closed
+        // until both reads catch up; a failed read retains the idempotent finish intent.
+        loadout = null; controls(); await refresh();
+      }
+      journal(null); notice(result.replayed ? 'Receipt asli dipulihkan; tidak diproses dua kali.' : 'Tersimpan di server.');
+    } catch (e) {
       if ([409, 410, 422].includes(e.status)) { journal(null); await refresh(); }
       notice(e.message + (pending ? ' Identitas request dipertahankan.' : ''));
     } finally { busy = false; controls(); }
@@ -88,9 +102,8 @@
     try {
       csrf = (await request(base + '/bootstrap')).csrf_token;
       user = (await request(base + '/training/identity')).user_id;
-      const [characters, trials] = await Promise.all([request(base + '/characters'), request(apiRoot + '/definitions')]);
+      const characters = await request(base + '/characters');
       $('character').replaceChildren(...characters.data.map(c => option(c.id, c.name)));
-      $('trial').replaceChildren(...trials.data.filter(t => t.wins < t.win_limit).map(t => option(t.id, `${t.title} · ${t.gold} gold / ${t.xp} XP · ${t.wins}/${t.win_limit}`)));
       let saved = null; try { saved = JSON.parse(sessionStorage.getItem(key()) || 'null'); } catch {}
       if (saved && characters.data.some(c => c.id === saved.character) && saved.body && typeof saved.body === 'object' && !Array.isArray(saved.body)
           && ['start', 'action', 'finish'].includes(saved.kind) && (saved.kind === 'start' || uuid.test(saved.battle || ''))

@@ -17,8 +17,20 @@ try {
         chmod($path, 0600); echo json_encode($f, JSON_THROW_ON_ERROR); exit(0);
     }
     $f = json_decode(file_get_contents($path), true, 32, JSON_THROW_ON_ERROR);
-    if ($action === 'ready') {
-        $link = DB::table('nl_trial_runs')->where('user_id', $f['player'])->sole(); TF::ready($link->battle_id); echo '{}'; exit(0);
+    if (in_array($action, ['ready', 'ready-latest'], true)) {
+        $query = DB::table('nl_trial_runs')->where('user_id', $f['player']);
+        $link = $action === 'ready' ? $query->sole() : $query->orderByDesc('id')->first();
+        TF::ready($link->battle_id); echo '{}'; exit(0);
+    }
+    if ($action === 'verify-chain') {
+        $links = DB::table('nl_trial_runs')->where('user_id', $f['player'])->get();
+        $battles = DB::table('nl_battles')->whereIn('id', $links->pluck('battle_id'))->get();
+        $c = DB::table('characters')->where('id', $f['character'])->sole();
+        $claims = DB::table('nl_claims')->where('user_id', $f['player'])->pluck('id');
+        if ($links->count() !== 3 || $battles->where('status', 'won')->count() !== 2 || $battles->where('status', 'started')->count() !== 1
+            || (int) $c->gold !== 50 || (int) $c->xp !== 240 || $claims->count() !== 3
+            || DB::table('nl_reward_ledger')->whereIn('claim_id', $claims)->count() !== 7) throw new RuntimeException('Consecutive trial reconciliation failed');
+        echo '{"wins":2,"started":1,"gold":50,"xp":240}'; exit(0);
     }
     if ($action === 'verify') {
         $link = DB::table('nl_trial_runs')->where('user_id', $f['player'])->sole(); $battle = DB::table('nl_battles')->where('id', $link->battle_id)->sole();

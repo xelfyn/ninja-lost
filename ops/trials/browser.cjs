@@ -100,12 +100,13 @@ async function main() {
   assert((await page.locator('#receipt').innerText()).includes(sql.claim_id)); assert.equal(fixture('verify').claim_id, sql.claim_id);
   const mobile = await browser.newContext({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true, storageState: await playerContext.storageState()});
   const phone = await mobile.newPage(); observe(phone); await phone.goto(TRIAL + '/client', {waitUntil: 'networkidle'}); await phone.locator('#status[data-state="won"]').waitFor();
-  await health(phone, '/evaluation/v1/trials/client', 'Tantangan Cermin');
-  assert((await phone.locator('#receipt').innerText()).includes(sql.claim_id)); assert.deepEqual(errors, []);
+  await health(phone, '/evaluation/v1/trials/client', 'Tantangan Cermin'); assert((await phone.locator('#receipt').innerText()).includes(sql.claim_id));
   console.log('PASS mirror-trial-recovery: committed reward response loss -> retained finish intent -> original receipt; PHP restart and mobile-sized session preserve result, gold, XP and ownership; functional checks only, no visual approval');
+  await require('./browser-chain.cjs')({staff, page, trialRoot: TRIAL, f, fixture}); assert.deepEqual(errors, []);
 }
 main().catch(e => { console.error(e.stack); process.exitCode = 1; }).finally(async () => {
-  try { if (browser) await browser.close(); } catch (e) { console.error(e.message); process.exitCode = 1; }
-  try { await stopServer(); } catch (e) { console.error(e.message); process.exitCode = 1; }
-  if (prepared) { try { assert.equal(fixture('cleanup').cleaned, true); console.log('PASS mirror-trial-cleanup'); } catch (e) { console.error(e.message); process.exitCode = 1; } }
+  try { if (browser) await browser.close(); } catch (e) { console.error(e.message); processExitFailure(); }
+  try { await stopServer(); } catch (e) { console.error(e.message); processExitFailure(); }
+  if (prepared) { try { assert.equal(fixture('cleanup').cleaned, true); console.log('PASS mirror-trial-cleanup'); } catch (e) { console.error(e.message); processExitFailure(); } }
 });
+function processExitFailure() { process.exitCode = 1; }
