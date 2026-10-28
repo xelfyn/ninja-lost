@@ -31,3 +31,5 @@
 *.zip
 __pycache__/
 *.pyc
+/public/game-assets/
+/storage/app/ninja-lost/assets/

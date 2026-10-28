@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "tools": {
+    "ffdec": {
+      "version": "26.4.0",
+      "tag": "version26.4.0",
+      "url": "https://github.com/jindrapetrik/jpexs-decompiler/releases/download/version26.4.0/ffdec_26.4.0.zip",
+      "bytes": 21917740,
+      "sha256": "56ce960aeafc7caf034e2052ba49f878a883f7c7ca690da6eeffca9587b5e4b9",
+      "license": "GPL-3.0-or-later",
+      "purpose": "Private SWF inspection/export tooling; tool is not redistributed with Ninja Lost."
+    }
+  }
+}
