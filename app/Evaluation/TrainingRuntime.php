@@ -22,6 +22,12 @@ final class TrainingRuntime
 
     public function replay(string $id, string $seed, array $bundle, array $commands): array
     {
+        // Associative JSON decoding turns the known empty equipment map {} into [].
+        // Restore only this schema-defined map at the wire boundary; lists stay lists.
+        // The stored bundle bytes/hash and the strict engine schema are not modified.
+        if (($bundle['snapshot']['equipment']['equipped'] ?? null) === []) {
+            $bundle['snapshot']['equipment']['equipped'] = (object) [];
+        }
         $input = SkillBlueprint::json(['protocol' => 'nl-training-v1', 'id' => $id, 'seed' => $seed, 'bundle' => $bundle, 'actions' => $commands]);
         abort_if(strlen($input) > 1048576, 422, 'Snapshot latihan terlalu besar.');
         $source = config('training.source');
