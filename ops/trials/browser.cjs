@@ -10,7 +10,7 @@ const env = {...process.env, APP_ENV: 'local', APP_URL: BASE, APP_DEBUG: 'false'
   NL_EVALUATION_GATEWAY: 'true', NL_TRAINING: 'true', NL_MIRROR_TRIALS: 'true', PHP_CLI_SERVER_WORKERS: '4',
   NL_TRIAL_QA_PASSWORD: password, NL_TRIAL_QA_STATE: path.join(path.dirname(process.env.NL_QA_STATE), 'trials.json')};
 const fixture = action => JSON.parse(execFileSync('php', ['ops/trials/browser-fixture.php', action], {cwd: ROOT, env, timeout: 20000, stdio: ['ignore', 'pipe', 'pipe']}).toString());
-let server, browser, prepared = false, intentionalDrop = false; const errors = [];
+let server, browser, prepared = false, intentionalDrop = false; const errors = [], failedResponses = [];
 async function startServer() {
   server = spawn('php', ['-S', '127.0.0.1:8004', '-t', PUBLIC, path.join(ROOT, 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php')], {cwd: PUBLIC, env, detached: true, stdio: ['ignore', 'ignore', 'pipe']});
   let stderr = ''; server.stderr.on('data', d => { stderr = (stderr + d).slice(-1500); });
@@ -30,6 +30,7 @@ async function stopServer() {
 function observe(page) {
   page.setDefaultTimeout(15000); page.setDefaultNavigationTimeout(20000);
   page.on('pageerror', e => errors.push(e.message));
+  page.on('response', r => { if (r.status() >= 400 && r.url().startsWith(BASE)) failedResponses.push({status: r.status(), path: new URL(r.url()).pathname}); });
   page.on('console', m => { if (['error', 'warning'].includes(m.type()) && !/401 \(Unauthorized\)/.test(m.text()) && !m.location().url.endsWith('/favicon.ico')
     && !(intentionalDrop && /net::ERR_FAILED/.test(m.text()))) errors.push(m.text()); });
 }
@@ -104,7 +105,16 @@ async function main() {
   console.log('PASS mirror-trial-recovery: committed reward response loss -> retained finish intent -> original receipt; PHP restart and mobile-sized session preserve result, gold, XP and ownership; functional checks only, no visual approval');
   await require('./browser-chain.cjs')({staff, page, trialRoot: TRIAL, f, fixture}); assert.deepEqual(errors, []);
 }
-main().catch(e => { console.error(e.stack); process.exitCode = 1; }).finally(async () => {
+main().catch(async e => {
+  console.error(e.stack); process.exitCode = 1;
+  // Rendered text only: never log input values, HTML, request bodies, cookies or headers.
+  const safe = value => String(value).split(password).join('[REDACTED]').replace(/[\w.+-]+@[\w.-]+/g, '[QA email]').replace(/[a-f0-9]{40,}/gi, '[hex]').slice(0, 2200);
+  console.error('Trial browser errors: ' + safe(JSON.stringify({errors, failedResponses})));
+  for (const context of browser?.contexts() || []) for (const page of context.pages()) {
+    try { console.error('Rendered diagnostic: ' + safe(JSON.stringify({path: new URL(page.url()).pathname, title: await page.title(), text: await page.locator('body').innerText({timeout: 1500})}))); }
+    catch { console.error('Rendered diagnostic unavailable'); }
+  }
+}).finally(async () => {
   try { if (browser) await browser.close(); } catch (e) { console.error(e.message); processExitFailure(); }
   try { await stopServer(); } catch (e) { console.error(e.message); processExitFailure(); }
   if (prepared) { try { assert.equal(fixture('cleanup').cleaned, true); console.log('PASS mirror-trial-cleanup'); } catch (e) { console.error(e.message); processExitFailure(); } }
