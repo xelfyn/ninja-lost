@@ -20,6 +20,10 @@ class AssetScanTest(unittest.TestCase):
                 "skill_42.swf",
                 "wpn1498.swf",
                 "set_2248.swf",
+                "set_01_0.swf",
+                "hair_01_1.swf",
+                "skill_icon_1-10.swf",
+                "item_icon_before_801.swf",
                 "back_557.swf",
                 "acsy_9.swf",
                 "pet_71.swf",
@@ -29,11 +33,19 @@ class AssetScanTest(unittest.TestCase):
                 (root / name).write_bytes(b"FWS\x09" + name.encode())
 
             report = MODULE.scan(root)
-            self.assertEqual(report["files_recognized"], 8)
+            self.assertEqual(report["files_recognized"], 12)
             self.assertEqual(report["duplicate_identities"], 0)
             self.assertEqual(report["counts"]["skill"], 1)
             self.assertEqual(report["counts"]["weapon"], 1)
-            self.assertEqual(report["counts"]["clothing"], 1)
+            self.assertEqual(report["counts"]["clothing"], 2)
+            self.assertEqual(report["counts"]["hair"], 1)
+            self.assertEqual(report["counts"]["skill-icon-pack"], 1)
+            self.assertEqual(report["counts"]["item-icon-pack"], 1)
+            ids = {x["canonical_id"] for x in report["assets"]}
+            self.assertIn("set_1_variant_0", ids)
+            self.assertIn("hair_1_variant_1", ids)
+            self.assertIn("skill_icon_1_to_10", ids)
+            self.assertIn("item_icon_before_801", ids)
             self.assertEqual(report["counts"]["pet"], 1)
             self.assertEqual(report["counts"]["enemy"], 1)
             self.assertEqual(report["counts"]["library"], 1)
