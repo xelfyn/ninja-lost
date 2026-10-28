@@ -39,6 +39,19 @@ async function health(page, route, title) {
   const text = await page.locator('body').innerText(); assert(text.length > 200 && !/SQLSTATE\[|Internal Server Error|Ignition|Whoops!/.test(text));
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 4));
 }
+async function confirmAction(page, button, expected) {
+  let handled;
+  const completed = new Promise(resolve => { handled = resolve; });
+  page.once('dialog', async dialog => {
+    const valid = dialog.type() === 'confirm' && dialog.message().startsWith(expected);
+    try { if (valid) await dialog.accept(); else await dialog.dismiss(); handled(valid); }
+    catch { handled(false); }
+  });
+  await button.click();
+  let timer;
+  try { assert.equal(await Promise.race([completed, new Promise(resolve => { timer = setTimeout(() => resolve(false), 5000); })]), true, 'Expected operation-specific confirmation'); }
+  finally { clearTimeout(timer); }
+}
 async function main() {
   const f = fixture('prepare'); prepared = true; await startServer(); browser = await chromium.launch({headless: true});
   const staffContext = await browser.newContext({viewport: {width: 1440, height: 1000}}), playerContext = await browser.newContext({viewport: {width: 1440, height: 1000}});
@@ -54,15 +67,16 @@ async function main() {
   await page.locator('#gear-weapon').selectOption(f.weapon); await page.locator('#gear-back').selectOption(f.back); await page.locator('#skills').selectOption([f.skill]);
   await page.getByRole('button', {name: 'Simpan loadout', exact: true}).click(); await page.locator('#loadout-note').filter({hasText: 'Revision akun 2.'}).waitFor();
   assert.equal((await (await playerContext.request.get(TRIAL + '/definitions')).json()).data.length, 0);
-  staff.once('dialog', d => d.accept()); await staff.getByTestId(`trial-row-${rule}`).getByRole('button', {name: 'Aktifkan', exact: true}).click();
+  await confirmAction(staff, staff.getByTestId(`trial-row-${rule}`).getByRole('button', {name: 'Aktifkan', exact: true}), 'Aktifkan');
   await staff.getByTestId(`trial-row-${rule}`).getByRole('button', {name: 'Nonaktifkan', exact: true}).waitFor();
   await health(staff, '/admin/mirror-trials', 'Tantangan Cermin');
   await page.goto(TRIAL + '/client', {waitUntil: 'networkidle'}); await page.locator('#session').waitFor({state: 'visible'});
   await page.locator('#trial').selectOption(String(rule)); await page.getByRole('button', {name: 'Mulai tantangan', exact: true}).click();
   await page.locator('#status[data-revision="0"]').waitFor(); fixture('ready'); await page.reload({waitUntil: 'networkidle'}); await page.locator('#status[data-revision="0"]').waitFor();
   const id = await page.locator('#status').getAttribute('data-battle'); assert((await page.locator('#player-hp').innerText()).includes('560'));
-  await staff.getByTestId(`trial-row-${rule}`).getByRole('button', {name: 'Nonaktifkan', exact: true}).click();
+  await confirmAction(staff, staff.getByTestId(`trial-row-${rule}`).getByRole('button', {name: 'Nonaktifkan', exact: true}), 'Nonaktifkan');
   await staff.getByTestId(`trial-row-${rule}`).getByRole('button', {name: 'Aktifkan', exact: true}).waitFor();
+  assert(!(await (await playerContext.request.get(TRIAL + '/definitions')).json()).data.some(t => t.id === rule));
   for (let i = 0; i < 16; i++) {
     if ((await page.locator('#status').innerText()).includes('· ended ·')) break;
     const revision = Number(await page.locator('#status').getAttribute('data-revision'));
@@ -107,7 +121,6 @@ async function main() {
 }
 main().catch(async e => {
   console.error(e.stack); process.exitCode = 1;
-  // Rendered text only: never log input values, HTML, request bodies, cookies or headers.
   const safe = value => String(value).split(password).join('[REDACTED]').replace(/[\w.+-]+@[\w.-]+/g, '[QA email]').replace(/[a-f0-9]{40,}/gi, '[hex]').slice(0, 2200);
   console.error('Trial browser errors: ' + safe(JSON.stringify({errors, failedResponses})));
   for (const context of browser?.contexts() || []) for (const page of context.pages()) {
@@ -115,8 +128,7 @@ main().catch(async e => {
     catch { console.error('Rendered diagnostic unavailable'); }
   }
 }).finally(async () => {
-  try { if (browser) await browser.close(); } catch (e) { console.error(e.message); processExitFailure(); }
-  try { await stopServer(); } catch (e) { console.error(e.message); processExitFailure(); }
-  if (prepared) { try { assert.equal(fixture('cleanup').cleaned, true); console.log('PASS mirror-trial-cleanup'); } catch (e) { console.error(e.message); processExitFailure(); } }
+  try { if (browser) await browser.close(); } catch (e) { console.error(e.message); process.exitCode = 1; }
+  try { await stopServer(); } catch (e) { console.error(e.message); process.exitCode = 1; }
+  if (prepared) { try { assert.equal(fixture('cleanup').cleaned, true); console.log('PASS mirror-trial-cleanup'); } catch (e) { console.error(e.message); process.exitCode = 1; } }
 });
-function processExitFailure() { process.exitCode = 1; }

@@ -19,14 +19,14 @@
         @endif
     </x-filament::section>
     @foreach ($trials as $trial)
-        <x-filament::section>
+        <x-filament::section wire:key="trial-{{ $trial->id }}">
             <div data-testid="trial-row-{{ $trial->id }}">
                 <h2>{{ $trial->title }} — {{ $trial->active ? 'Aktif' : 'Nonaktif' }}</h2>
                 <p>Level {{ $trial->req_lvl }} · {{ $trial->gold }} gold · {{ $trial->xp }} XP dasar · maksimal {{ $trial->win_limit }} kemenangan per akun.</p>
                 @if ($trial->active)
-                    <x-filament::button wire:click="pause({{ $trial->id }})">Nonaktifkan</x-filament::button>
+                    <x-filament::button wire:key="trial-pause-{{ $trial->id }}" wire:click="pause({{ $trial->id }})" wire:loading.attr="disabled" wire:confirm="Nonaktifkan pendaftaran baru? Reward battle yang sudah dimulai tetap berlaku.">Nonaktifkan</x-filament::button>
                 @else
-                    <x-filament::button wire:click="activate({{ $trial->id }})" wire:confirm="Aktifkan aturan dan reward ini untuk evaluasi?">Aktifkan</x-filament::button>
+                    <x-filament::button wire:key="trial-activate-{{ $trial->id }}" wire:click="activate({{ $trial->id }})" wire:loading.attr="disabled" wire:confirm="Aktifkan aturan dan reward ini untuk evaluasi?">Aktifkan</x-filament::button>
                 @endif
             </div>
         </x-filament::section>
