@@ -18,19 +18,19 @@ MAX_FILES = 20000
 MAX_FILE_BYTES = 32 * 1024 * 1024
 
 PATTERNS = (
-    ("skill-icon-pack", re.compile(r"^skill_icon_(\\d+)-(\\d+)\\.swf$", re.I), None),
-    ("item-icon-pack-range", re.compile(r"^item_icon_(\\d+)-(\\d+)\\.swf$", re.I), None),
-    ("item-icon-pack-before", re.compile(r"^item_icon_before_(\\d+)\\.swf$", re.I), None),
-    ("skill", re.compile(r"^skill_?(\\d+)\\.swf$", re.I), "skill_{}"),
-    ("weapon", re.compile(r"^wpn_?(\\d+)\\.swf$", re.I), "wpn_{}"),
-    ("clothing", re.compile(r"^set_?(\\d+)(?:_(\\d+))?\\.swf$", re.I), "set_{}"),
-    ("back", re.compile(r"^back_?(\\d+)\\.swf$", re.I), "back_{}"),
-    ("accessory", re.compile(r"^(?:acsy|accessory)_?(\\d+)\\.swf$", re.I), "acsy_{}"),
-    ("hair", re.compile(r"^hair_?(\\d+)(?:_(\\d+))?\\.swf$", re.I), "hair_{}"),
-    ("item", re.compile(r"^item_?(\\d+)\\.swf$", re.I), "item_{}"),
-    ("pet", re.compile(r"^pet_?(\\d+)\\.swf$", re.I), "pet_{}"),
-    ("enemy", re.compile(r"^(?:ene|enemy)_?(\\d+)\\.swf$", re.I), "enemy_{}"),
-    ("icon", re.compile(r"^icon_?(\\d+)\\.swf$", re.I), "icon_{}"),
+    ("skill-icon-pack", re.compile(r"^skill_icon_(\d+)-(\d+)\.swf$", re.I), None),
+    ("item-icon-pack-range", re.compile(r"^item_icon_(\d+)-(\d+)\.swf$", re.I), None),
+    ("item-icon-pack-before", re.compile(r"^item_icon_before_(\d+)\.swf$", re.I), None),
+    ("skill", re.compile(r"^skill_?(\d+)\.swf$", re.I), "skill_{}"),
+    ("weapon", re.compile(r"^wpn_?(\d+)\.swf$", re.I), "wpn_{}"),
+    ("clothing", re.compile(r"^set_?(\d+)(?:_(\d+))?\.swf$", re.I), "set_{}"),
+    ("back", re.compile(r"^back_?(\d+)\.swf$", re.I), "back_{}"),
+    ("accessory", re.compile(r"^(?:acsy|accessory)_?(\d+)\.swf$", re.I), "acsy_{}"),
+    ("hair", re.compile(r"^hair_?(\d+)(?:_(\d+))?\.swf$", re.I), "hair_{}"),
+    ("item", re.compile(r"^item_?(\d+)\.swf$", re.I), "item_{}"),
+    ("pet", re.compile(r"^pet_?(\d+)\.swf$", re.I), "pet_{}"),
+    ("enemy", re.compile(r"^(?:ene|enemy)_?(\d+)\.swf$", re.I), "enemy_{}"),
+    ("icon", re.compile(r"^icon_?(\d+)\.swf$", re.I), "icon_{}"),
 )
 
 LIBRARY_NAMES = {
