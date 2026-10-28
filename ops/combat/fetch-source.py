@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Fetch four pinned text files for isolated combat tests; never execute an intake hook."""
+"""Fetch pinned text for isolated tests. Never execute an intake hook or follow redirects."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 import urllib.parse
@@ -11,8 +12,23 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         raise ValueError('Source redirect refused')
 
+def source_request(url):
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme != 'https' or parts.netloc not in ('api.github.com', 'raw.githubusercontent.com') or parts.fragment:
+        raise ValueError('Only exact HTTPS GitHub source origins are allowed')
+    headers = {'User-Agent': 'NinjaLost-pinned-readonly-audit', 'Accept': 'application/vnd.github+json'}
+    # Job-scoped read-only token is sent ONLY to GitHub REST, never raw-file hosts.
+    # NoRedirect prevents forwarding credentials to another origin. No headers are logged.
+    if parts.netloc == 'api.github.com':
+        token = os.environ.get('NL_SOURCE_TOKEN', '')
+        if token:
+            if '\r' in token or '\n' in token:
+                raise ValueError('Invalid source authentication configuration')
+            headers['Authorization'] = 'Bearer ' + token
+    return urllib.request.Request(url, headers=headers)
+
 def fetch(url, maximum):
-    request = urllib.request.Request(url, headers={'User-Agent': 'NinjaLost-G8E-readonly-audit', 'Accept': 'application/vnd.github+json'})
+    request = source_request(url)
     with urllib.request.build_opener(NoRedirect).open(request, timeout=30) as response:
         data = response.read(maximum + 1)
     if len(data) > maximum:
@@ -35,7 +51,6 @@ def main():
         data.decode('utf-8', errors='strict')
         (dest / entry['local']).write_bytes(data)
         print('PIN_OK', entry['local'], 'bytes=' + str(len(data)), 'sha256=' + hashlib.sha256(data).hexdigest())
-    # Metadata only. This is an exact-tree observation, not a license or all-branches claim.
     tree = json.loads(fetch('https://api.github.com/repos/' + lock['repository'] + '/git/trees/' + lock['commit'] + '?recursive=1', 20_000_000))
     if tree.get('truncated') is not False:
         raise ValueError('Upstream tree incomplete; cannot assert source counts')

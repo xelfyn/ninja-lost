@@ -50,12 +50,15 @@ jobs:
       - name: Decoder catalogue and publication contracts
         run: |
           python3 -m unittest discover -s ops/combat-data -p 'test_*.py' -v
+          python3 -m unittest discover -s ops/combat -p 'test_*.py' -v
           node --test ops/combat-data/catalog.test.cjs ops/content-studio/catalog.test.cjs
           find app/Content app/Services/Content ops/content-studio -name '*.php' -print0 | xargs -0 -n1 php -l
           php -l app/Filament/Pages/ContentStudio.php
           node --check ops/content-studio/browser.cjs
           bash -n ops/content-studio/browser.sh
       - name: Pinned read-only metadata and source intake
+        env:
+          NL_SOURCE_TOKEN: ${{ github.token }}
         run: |
           python3 ops/combat-data/inspect.py "$RUNNER_TEMP/nl-combat-data"
           python3 ops/combat/fetch-source.py "$RUNNER_TEMP/nl-combat-engine"
