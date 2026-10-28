@@ -18,6 +18,8 @@ MAX_FILES = 20000
 MAX_FILE_BYTES = 32 * 1024 * 1024
 
 PATTERNS = (
+    ("skill-icon-pack", re.compile(r"^skill_icon_(\\d+)-(\\d+)\\.swf$", re.I), "skill_icon_{}"),
+    ("item-icon-pack", re.compile(r"^item_icon_(?:before_)?(\\d+)(?:-(\\d+))?\\.swf$", re.I), "item_icon_{}"),
     ("skill", re.compile(r"^skill_?(\d+)\.swf$", re.I), "skill_{}"),
     ("weapon", re.compile(r"^wpn_?(\d+)\.swf$", re.I), "wpn_{}"),
     ("clothing", re.compile(r"^set_?(\d+)\.swf$", re.I), "set_{}"),
@@ -55,7 +57,10 @@ def classify(name: str):
             # Some modular character assets carry a numeric source variant
             # (for example set_01_0 / set_01_1). Do not infer what that
             # variant means until metadata confirms it.
-            if match.lastindex and match.lastindex >= 2 and match.group(2) is not None:
+            if kind in {"skill-icon-pack", "item-icon-pack"}:
+                if match.lastindex and match.lastindex >= 2 and match.group(2) is not None:
+                    canonical += "_to_" + str(int(match.group(2)))
+            elif match.lastindex and match.lastindex >= 2 and match.group(2) is not None:
                 canonical += "_variant_" + str(int(match.group(2)))
             return {
                 "kind": kind,
