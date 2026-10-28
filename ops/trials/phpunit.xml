@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="../../vendor/autoload.php" cacheResult="false" colors="false" failOnWarning="true" failOnRisky="true">
+  <php>
+    <env name="NL_EVALUATION_GATEWAY" value="true" force="true" verbatim="true"/>
+    <env name="NL_TRAINING" value="true" force="true" verbatim="true"/>
+    <env name="NL_MIRROR_TRIALS" value="true" force="true" verbatim="true"/>
+  </php>
+  <testsuites><testsuite name="Mirror trials"><directory suffix="Test.php">.</directory></testsuite></testsuites>
+</phpunit>

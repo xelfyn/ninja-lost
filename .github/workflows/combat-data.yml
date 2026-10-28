@@ -52,14 +52,17 @@ jobs:
           python3 -m unittest discover -s ops/combat-data -p 'test_*.py' -v
           python3 -m unittest discover -s ops/combat -p 'test_*.py' -v
           node --test ops/combat-data/catalog.test.cjs ops/content-studio/catalog.test.cjs
-          find app/Content app/Services/Content app/Evaluation ops/content-studio ops/equipment-studio ops/training -name '*.php' -print0 | xargs -0 -n1 php -l
+          find app/Content app/Services/Content app/Evaluation ops/content-studio ops/equipment-studio ops/training ops/trials -name '*.php' -print0 | xargs -0 -n1 php -l
           php -l app/Filament/Pages/ContentStudio.php
           php -l app/Filament/Pages/EquipmentStudio.php
+          php -l app/Filament/Pages/MirrorTrials.php
           php -l app/Services/Combat/CombatLoadout.php
           node --check ops/content-studio/browser.cjs
           node --check ops/equipment-studio/browser.cjs
           node --check ops/training/browser.cjs
           node --check public/js/training-client.js
+          node --check ops/trials/browser.cjs
+          node --check public/js/trial-client.js
           bash -n ops/content-studio/browser.sh
       - name: Pinned read-only metadata and source intake
         env:
@@ -95,11 +98,19 @@ jobs:
           NL_EVALUATION_GATEWAY=true NL_TRAINING=false APP_ENV=local php ops/training/check-gate.php disabled
           NL_EVALUATION_GATEWAY=true NL_TRAINING=true APP_ENV=production php ops/training/check-gate.php disabled
           NL_EVALUATION_GATEWAY=true NL_TRAINING=true APP_ENV=local php ops/training/check-gate.php enabled
+      - name: Bound mirror outcome shared rewards and additive upgrade
+        run: |
+          vendor/bin/phpunit -c ops/trials/phpunit.xml --testdox
+          NL_EVALUATION_GATEWAY=true NL_TRAINING=true NL_MIRROR_TRIALS=false APP_ENV=local php ops/trials/check-gate.php disabled
+          NL_EVALUATION_GATEWAY=false NL_TRAINING=true NL_MIRROR_TRIALS=true APP_ENV=local php ops/trials/check-gate.php disabled
+          NL_EVALUATION_GATEWAY=true NL_TRAINING=false NL_MIRROR_TRIALS=true APP_ENV=local php ops/trials/check-gate.php disabled
+          NL_EVALUATION_GATEWAY=true NL_TRAINING=true NL_MIRROR_TRIALS=true APP_ENV=production php ops/trials/check-gate.php disabled
+          NL_EVALUATION_GATEWAY=true NL_TRAINING=true NL_MIRROR_TRIALS=true APP_ENV=local php ops/trials/check-gate.php enabled
       - name: Concurrent editing publishing and activation
         run: |
           php ops/content-studio/race.php
           php ops/equipment-studio/race.php
-      - name: Actual skill equipment and training browser loops
+      - name: Actual authoring training and reward browser loops
         run: bash ops/content-studio/browser.sh
       - name: Remove owned temporary metadata and record limits
         if: always()
@@ -107,4 +118,4 @@ jobs:
           RESULT: ${{ job.status }}
         run: |
           rm -rf -- "$RUNNER_TEMP/nl-combat-data" "$RUNNER_TEMP/nl-combat-engine"
-          printf '## Combat data, Content Studio and training\nResult: %s\nRevision: `%s`\n\nOpt-in loopback paused mirror training reuses pinned Battle/StatsCalc, owned content and existing economy. No mission reward verifier, live PvP, native client, animation/assets import, production deployment or artifact upload. UI visual refactor remains deferred.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          printf '## Content, training and bound mirror trials\nResult: %s\nRevision: `%s`\n\nMirror trials reuse pinned combat and G8C/shared ledger. Standalone training stays reward-free. No arbitrary mission parity, live PvP, native client, assets, production deployment or artifact upload. Visual refactor remains deferred.\n' "$RESULT" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"

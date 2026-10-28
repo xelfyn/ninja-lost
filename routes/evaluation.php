@@ -24,3 +24,4 @@ if (GatewayAccess::enabled()) {
 }
 
 require __DIR__.'/training.php';
+require __DIR__.'/mirror-trials.php';
