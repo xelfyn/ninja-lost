@@ -84,16 +84,18 @@ async function main() {
   }
   assert((await page.locator('#status').innerText()).includes('· ended ·')); assert.equal(fixture('verify').status, 'started');
   const csrf = (await (await playerContext.request.get(API + '/bootstrap')).json()).csrf_token;
+  // APIRequestContext does not inherit the browser fetch Accept header.
+  const jsonHeaders = {Accept: 'application/json', 'X-CSRF-TOKEN': csrf};
   const finishUrl = `${TRIAL}/runs/${id}/finish`;
-  assert.equal((await playerContext.request.post(finishUrl, {data: {}})).status(), 419);
-  assert.equal((await playerContext.request.post(finishUrl, {data: {won: true, gold: 9999}, headers: {'X-CSRF-TOKEN': csrf}})).status(), 422);
+  assert.equal((await playerContext.request.post(finishUrl, {data: {}, headers: {Accept: 'application/json'}})).status(), 419);
+  assert.equal((await playerContext.request.post(finishUrl, {data: {won: true, gold: 9999}, headers: jsonHeaders})).status(), 422);
   assert.equal(fixture('verify').status, 'started');
   intentionalDrop = true; let handlerDone, handlerError = null;
   const complete = new Promise(resolve => { handlerDone = resolve; });
   await page.route(finishUrl, async route => {
     let handled = false;
     try {
-      const responses = await Promise.all([route.fetch(), ...Array.from({length: 7}, () => playerContext.request.post(finishUrl, {data: {}, headers: {'X-CSRF-TOKEN': csrf}}))]);
+      const responses = await Promise.all([route.fetch(), ...Array.from({length: 7}, () => playerContext.request.post(finishUrl, {data: {}, headers: jsonHeaders}))]);
       for (const response of responses) assert.equal(response.status(), 200);
       const values = await Promise.all(responses.map(r => r.json())); assert.equal(values.filter(r => !r.replayed).length, 1);
       assert.equal(new Set(values.map(v => v.trial.result.claim_id)).size, 1); handled = true; await route.abort('failed');
@@ -108,8 +110,9 @@ async function main() {
   assert.equal(fixture('verify').claim_id, sql.claim_id); intentionalDrop = false;
   await health(page, '/evaluation/v1/trials/client', 'Tantangan Cermin');
   const gear = await (await playerContext.request.get(API + `/training/characters/${f.character}/loadout`)).json();
-  const over = await playerContext.request.post(TRIAL + '/runs', {data: {character_id: f.character, trial_id: rule, revision: gear.revision, request_key: crypto.randomUUID()}, headers: {'X-CSRF-TOKEN': csrf}});
-  assert.equal(over.status(), 409); assert((await over.json()).message.includes('Kuota')); fixture('verify');
+  const over = await playerContext.request.post(TRIAL + '/runs', {data: {character_id: f.character, trial_id: rule, revision: gear.revision, request_key: crypto.randomUUID()}, headers: jsonHeaders});
+  assert.equal(over.status(), 409); assert.match(over.headers()['content-type'], /application\/json/);
+  assert((await over.json()).message.includes('Kuota')); fixture('verify');
   console.log('PASS mirror-trial-browser: real admin form -> inactive rule -> activation -> owned player loadout -> engine KO -> eight simultaneous finishes -> one gold/XP receipt; pause preserves promised terms; CSRF/tampering/quota reject');
   await stopServer(); await startServer(); await page.reload({waitUntil: 'networkidle'}); await page.locator('#status[data-state="won"]').waitFor();
   assert((await page.locator('#receipt').innerText()).includes(sql.claim_id)); assert.equal(fixture('verify').claim_id, sql.claim_id);
