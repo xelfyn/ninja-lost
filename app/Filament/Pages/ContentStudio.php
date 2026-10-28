@@ -93,7 +93,7 @@ class ContentStudio extends Page
     }
     public function saveDraft(): void
     {
-        abort_unless(static::canAccess(), 403);
+        app(\App\Services\Rewards\RewardManagement::class)::authorize(auth()->user());
         $d = $this->definition();
         $result = app(SkillStudio::class)->save(auth()->user(), $d, $this->draftId, $this->draftId === null ? null : $this->draftRevision);
         $this->draftId = $result['id']; $this->draftRevision = $result['revision']; $this->publishedId = '';
@@ -103,7 +103,8 @@ class ContentStudio extends Page
     public function loadDraft(int $id): void
     {
         abort_unless(static::canAccess(), 403);
-        $row = DB::table('nl_studio_drafts')->where('id', $id)->first(); abort_unless($row, 404);
+        $row = DB::table('nl_studio_drafts')->where('id', $id)->first();
+        abort_unless($row && str_starts_with($row->content_key, 'skill_nl_'), 404);
         $d = json_decode($row->definition, true, 32, JSON_THROW_ON_ERROR); $d['hit_frames'] = implode(',', $d['hit_frames']);
         $this->draftId = $id; $this->draftRevision = (int) $row->revision;
         $this->currentHead = DB::table('nl_studio_heads')->where('draft_id', $id)->value('release_id');
@@ -136,7 +137,7 @@ class ContentStudio extends Page
     protected function getViewData(): array
     {
         abort_unless(static::canAccess(), 403);
-        return ['drafts' => DB::table('nl_studio_drafts')->orderByDesc('updated_at')->limit(30)->get(),
+        return ['drafts' => DB::table('nl_studio_drafts')->where('content_key', 'like', 'skill_nl_%')->orderByDesc('updated_at')->limit(30)->get(),
             'releases' => $this->draftId ? DB::table('nl_studio_releases')->where('draft_id', $this->draftId)->orderByDesc('draft_revision')->limit(20)->get() : collect(),
             'mechanics' => EffectRegistry::RULES];
     }

@@ -12,3 +12,5 @@ node "$qa_root/node_modules/playwright/cli.js" --version
 timeout --kill-after=10s 180s node "$qa_root/node_modules/playwright/cli.js" install --only-shell chromium > "$qa_root/browser-install.log" 2>&1 || { tail -n 60 "$qa_root/browser-install.log"; exit 1; }
 timeout --kill-after=10s 35s node ops/browser/preflight.cjs
 timeout --kill-after=10s 240s node ops/content-studio/browser.cjs
+export NL_QA_STATE="$qa_root/equipment-state.json"
+timeout --kill-after=10s 240s node ops/equipment-studio/browser.cjs

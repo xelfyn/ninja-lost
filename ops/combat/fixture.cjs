@@ -50,7 +50,7 @@ function load(name, dependencies, clock, random) {
   }, {filename: name, timeout: 1000});
   return module.exports;
 }
-function fixture({safe = true, scrolls = false, onEnd, level = 10, clock: providedClock, skillData, characters} = {}) {
+function fixture({safe = true, scrolls = false, onEnd, level = 10, clock: providedClock, skillData, characters, equipmentBundles} = {}) {
   const clock = providedClock ?? new Clock();
   const skills = {
     skill_eval_hit: {skill_cp_cost: 20, skill_cooldown: 3, skill_damage: 70, skill_type: 2},
@@ -59,7 +59,8 @@ function fixture({safe = true, scrolls = false, onEnd, level = 10, clock: provid
   const SkillData = skillData ?? {getSkill: id => { if (!skills[id]) throw new Error('Synthetic skill not found'); return skills[id]; },
     getSkillEffects: id => id === 'skill_eval_stun' ? [{effect: 'stun', type: 'Debuff', target: 'enemy', duration: 1, amount: 0, chance: 100, effect_name: 'Synthetic Stun', calc_type: 'number'}] : []};
   const random = () => 0.5;
-  const stats = load('StatsCalc.js', {'../SkillData': SkillData}, clock, random);
+  const upstreamStats = load('StatsCalc.js', {'../SkillData': SkillData}, clock, random);
+  const stats = equipmentBundles ? require('../../combat/data/EquipmentStats.cjs').wrapStats(upstreamStats, equipmentBundles) : upstreamStats;
   const dbCalls = [];
   const db = {getGameConfig: async () => { dbCalls.push('config'); return {}; }, getPool: () => ({execute: async sql => { dbCalls.push(sql); throw new Error('Fixture DB intentionally unavailable'); }})};
   const Base = load('Battle.js', {'uuid': {v4: crypto.randomUUID}, '../config': {turnDuration: 30, maxRounds: 50, pvpPointsWin: 1, pvpPointsLose: 1},
@@ -72,6 +73,6 @@ function fixture({safe = true, scrolls = false, onEnd, level = 10, clock: provid
   const battle = new Type(options);
   const packet = extra => ({battle_id: battle.id, turn_id: battle.turnId, ...extra});
   const send = (p, action, extra) => p.socket.receive('Battle.action.' + action, packet(extra));
-  return {battle, clock, host, enemy, options, Type, Base, dbCalls, send, packet, stats};
+  return {battle, clock, host, enemy, options, Type, Base, dbCalls, send, packet, stats, upstreamStats};
 }
 module.exports = {fixture, Clock, Socket};

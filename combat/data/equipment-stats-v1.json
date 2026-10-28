@@ -1,0 +1,14 @@
+{
+  "version": "nl-equipment-stats-v1",
+  "composition": "floor_after_flat_then_additive_percent",
+  "max_final": 10000000,
+  "stats": {
+    "maxHp": {"label": "HP maksimum", "units": {"flat": 10000, "percent": 200}},
+    "maxCp": {"label": "CP maksimum", "units": {"flat": 10000, "percent": 200}},
+    "agility": {"label": "Agility", "units": {"flat": 10000, "percent": 200}},
+    "atk": {"label": "Attack", "units": {"flat": 10000, "percent": 200}},
+    "def": {"label": "Defense", "units": {"flat": 10000, "percent": 200}},
+    "critPct": {"label": "Critical", "units": {"points": 100}, "cap": 100},
+    "dodgePct": {"label": "Dodge", "units": {"points": 95}, "cap": 95}
+  }
+}
