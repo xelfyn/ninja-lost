@@ -30,7 +30,7 @@ function runGearRace(array $inputs): array {
         return $out;
     } finally { foreach ($workers as $p) if ($p->isRunning()) $p->stop(1); foreach (glob($dir.'/*') as $file) unlink($file); rmdir($dir); }
 }
-$users = []; $draftId = 0;
+$users = []; $draftId = 0; $failed = false;
 try {
     Fixture::guard(); for ($i = 0; $i < 8; $i++) $users[] = Fixture::actor(99);
     $d = EF::definition(); $service = app(EquipmentStudio::class); $draft = $service->save($users[0], $d); $draftId = $draft['id'];
@@ -52,5 +52,17 @@ try {
     $out = runGearRace($input); demand(count(array_filter($out, fn ($r) => $r['ok'])) === 1, 'Stale edits overwritten');
     demand((int) DB::table('nl_studio_drafts')->where('id', $draftId)->value('revision') === 3, 'Wrong edit revision');
     echo "PASS gear-edit: one saved revision and seven conflicts\n";
-} catch (Throwable $e) { fwrite(STDERR, get_class($e).': '.$e->getMessage()."\n"); exit(1); }
-finally { if ($draftId) EF::cleanup($draftId, array_map(fn ($u) => $u->id, $users)); }
+} catch (Throwable $e) { fwrite(STDERR, get_class($e).': '.$e->getMessage()."\n"); $failed = true; }
+finally {
+    try {
+        $userIds = array_map(fn ($u) => $u->id, $users);
+        if ($draftId) EF::cleanup($draftId, $userIds);
+        elseif ($userIds) Fixture::cleanup($userIds, [], []);
+        if ($draftId) {
+            demand(!DB::table('nl_studio_drafts')->where('id', $draftId)->exists(), 'Fixture draft not removed');
+            demand(!DB::table('users')->whereIn('id', $userIds)->exists(), 'Fixture users not removed');
+        }
+        echo "PASS gear-cleanup: owned fixture removed in foreign-key order\n";
+    } catch (Throwable $e) { fwrite(STDERR, 'Cleanup failed: '.get_class($e).': '.$e->getMessage()."\n"); $failed = true; }
+}
+if ($failed) exit(1);

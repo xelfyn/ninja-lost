@@ -93,7 +93,7 @@ class ContentStudio extends Page
     }
     public function saveDraft(): void
     {
-        app(\App\Services\Rewards\RewardManagement::class)::authorize(auth()->user());
+        abort_unless(static::canAccess(), 403);
         $d = $this->definition();
         $result = app(SkillStudio::class)->save(auth()->user(), $d, $this->draftId, $this->draftId === null ? null : $this->draftRevision);
         $this->draftId = $result['id']; $this->draftRevision = $result['revision']; $this->publishedId = '';
