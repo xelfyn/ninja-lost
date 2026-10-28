@@ -1,0 +1,26 @@
+name: Ninja Lost combat data contract
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: combat-data-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  content:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Bounded decoder regression
+        run: python3 -m unittest discover -s ops/combat-data -p 'test_*.py' -v
+      - name: Pinned read-only metadata inventory
+        run: python3 ops/combat-data/inspect.py "$RUNNER_TEMP/nl-combat-data"
+      - name: Remove owned temporary metadata
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/nl-combat-data"

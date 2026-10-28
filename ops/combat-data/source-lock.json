@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "repository": "YoshCasaster/Ninjasage-PrivateServer-community",
+  "commit": "a53f074aaa0690398db947205956ffb97d5671aa",
+  "scope": "Read-only compiled JSON metadata, not asset/client redistribution or rights approval",
+  "files": [
+    {"path":"bindata/skills.bin","local":"skills.bin","git_blob":"0f11b231b1db216e7002da5c9ec82c30e4d56c93","bytes":57597},
+    {"path":"bindata/skill-effect.bin","local":"skill-effect.bin","git_blob":"bce0013e95970a0d90e5d24826e7f65685a36c43","bytes":11275}
+  ]
+}
