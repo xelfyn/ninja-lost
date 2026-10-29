@@ -79,7 +79,7 @@ class StaffGrants extends Page
         $this->resetErrorBag('characterSearch');
     }
 
-    public function selectContent(string $key): void
+    public function selectContent(int $catalogId): void
     {
         abort_unless(static::canAccess(), 403);
 
@@ -88,7 +88,7 @@ class StaffGrants extends Page
             return;
         }
 
-        $entry = app(ContentDirectoryService::class)->content($this->rewardType, $key);
+        $entry = app(ContentDirectoryService::class)->contentByCatalogId($this->rewardType, $catalogId);
 
         if ($entry === null) {
             $this->addError('contentSearch', 'That content is no longer enabled or available.');
