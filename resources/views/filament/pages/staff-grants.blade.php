@@ -96,8 +96,8 @@
                                     type="button"
                                     color="gray"
                                     size="sm"
-                                    wire:key="grant-content-{{ $entry['kind'] }}-{{ $entry['key'] }}"
-                                    wire:click="selectContent(@js($entry['key']))"
+                                    wire:key="grant-content-{{ $entry['catalog_id'] }}"
+                                    wire:click="selectContent({{ $entry['catalog_id'] }})"
                                 >
                                     {{ $entry['label'] }}
                                     · visual: {{ $entry['asset']['visual_status'] }}
