@@ -98,7 +98,7 @@ final class ContentDirectoryTest extends TestCase
             'level' => 10,
             'price_gold' => 0,
             'price_tokens' => 0,
-            'category' => 'weapon',
+            'category' => 'clan',
             'premium' => false,
             'icon' => null,
             'created_at' => now(),
@@ -203,7 +203,7 @@ final class ContentDirectoryTest extends TestCase
 
         $this->assertCount(1, $rows);
         $this->assertSame('wpn_10', $rows[0]['key']);
-        $this->assertSame('weapon', $rows[0]['category']);
+        $this->assertSame('clan', $rows[0]['category']);
         $this->assertSame('weapon', $rows[0]['asset_kind']);
         $this->assertSame('verified', $rows[0]['asset']['visual_status']);
         $this->assertSame('/game-assets/weapon/wpn_10.png', $rows[0]['asset']['url']);
