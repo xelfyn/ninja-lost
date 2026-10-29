@@ -118,6 +118,21 @@ final class ContentDirectoryService
         return $row ? $this->contentRow($kind, $definition, $row) : null;
     }
 
+    public function contentByCatalogId(string $kind, int $catalogId): ?array
+    {
+        if ($catalogId < 1) {
+            return null;
+        }
+
+        $definition = $this->definition($kind);
+
+        $row = $this->contentQuery($kind, $definition)
+            ->where('c.id', $catalogId)
+            ->first($this->contentColumns($definition));
+
+        return $row ? $this->contentRow($kind, $definition, $row) : null;
+    }
+
     private function definition(string $kind): array
     {
         return self::CONTENT[$kind]
@@ -135,6 +150,7 @@ final class ContentDirectoryService
     private function contentColumns(array $definition): array
     {
         $columns = [
+            'c.id as catalog_id',
             'c.content_key',
             'c.title as catalog_title',
             'c.source_revision',
@@ -167,6 +183,7 @@ final class ContentDirectoryService
         $level = $definition['level'] && isset($row->level) ? (int) $row->level : null;
 
         return [
+            'catalog_id' => (int) $row->catalog_id,
             'kind' => $kind,
             'category' => $category,
             'key' => $key,
