@@ -3,6 +3,7 @@
 namespace App\Player\Pages;
 
 use App\Models\User;
+use App\Services\Content\PlayerVisualStateService;
 use App\Services\Rewards\RewardService;
 use App\Support\Rewards\RewardClock;
 use App\Support\Rewards\RewardRules;
@@ -102,6 +103,7 @@ class PlayerHome extends Page
         $choices = $selected ? json_decode($selected->choices, true, 32, JSON_THROW_ON_ERROR) : [];
         return [
             'characters' => $characters, 'character' => $character, 'inventory' => $inventory,
+            'visualState' => $character ? app(PlayerVisualStateService::class)->forCharacter($character) : null,
             'tokens' => (int) DB::table('users')->where('id', $userId)->value('tokens'),
             'campaigns' => $campaigns, 'choices' => $choices,
             'history' => DB::table('nl_claims')->where('user_id', $userId)->orderByDesc('created_at')->orderByDesc('id')->limit(20)->get(),
