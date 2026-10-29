@@ -36,7 +36,9 @@ final class ContentDirectoryTest extends TestCase
 
         $this->root = sys_get_temp_dir().'/nl-content-directory-'.bin2hex(random_bytes(8));
         File::makeDirectory($this->root.'/public/skill', 0700, true);
+        File::makeDirectory($this->root.'/public/weapon', 0700, true);
         File::put($this->root.'/public/skill/skill_1.png', "\x89PNG\r\n\x1a\nfixture");
+        File::put($this->root.'/public/weapon/wpn_10.png', "\x89PNG\r\n\x1a\nweapon");
         File::put($this->root.'/manifest.json', json_encode([
             'schema_version' => 1,
             'assets' => [
@@ -46,6 +48,15 @@ final class ContentDirectoryTest extends TestCase
                         'source_type' => 'ninja-saga-swf',
                         'source_ref' => 'swf/library/icons/skill_icon_1-10.swf',
                         'web_path' => 'skill/skill_1.png',
+                        'visual_status' => 'verified',
+                    ],
+                ],
+                'weapon' => [
+                    'wpn_10' => [
+                        'source_id' => 'wpn_10',
+                        'source_type' => 'ninja-saga-swf',
+                        'source_ref' => 'swf/items/wpn_10.swf',
+                        'web_path' => 'weapon/wpn_10.png',
                         'visual_status' => 'verified',
                     ],
                 ],
@@ -81,8 +92,22 @@ final class ContentDirectoryTest extends TestCase
             'updated_at' => now(),
         ]);
 
+        DB::table('items')->insert([
+            'item_id' => 'wpn_10',
+            'name' => 'Kage Blade',
+            'level' => 10,
+            'price_gold' => 0,
+            'price_tokens' => 0,
+            'category' => 'weapon',
+            'premium' => false,
+            'icon' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         $this->catalog('skill', 'skill_1', 'Catalog Lightning', true);
         $this->catalog('skill', 'skill_disabled', 'Disabled Skill', false);
+        $this->catalog('item', 'wpn_10', 'Catalog Kage Blade', true);
     }
 
     protected function tearDown(): void
@@ -161,6 +186,18 @@ final class ContentDirectoryTest extends TestCase
 
         $this->assertSame([], app(ContentDirectoryService::class)->searchContent('skill', 'Disabled Skill'));
         $this->assertNull(app(ContentDirectoryService::class)->content('skill', 'skill_disabled'));
+    }
+
+    public function test_item_visual_resolves_from_equipment_category_not_generic_item_bucket(): void
+    {
+        $rows = app(ContentDirectoryService::class)->searchContent('item', 'Kage Blade');
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('wpn_10', $rows[0]['key']);
+        $this->assertSame('weapon', $rows[0]['category']);
+        $this->assertSame('weapon', $rows[0]['asset_kind']);
+        $this->assertSame('verified', $rows[0]['asset']['visual_status']);
+        $this->assertSame('/game-assets/weapon/wpn_10.png', $rows[0]['asset']['url']);
     }
 
     public function test_unknown_content_kind_is_rejected(): void
