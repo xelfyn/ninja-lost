@@ -177,7 +177,7 @@ final class ContentDirectoryService
         $category = $definition['category'] && isset($row->definition_category)
             ? trim((string) $row->definition_category)
             : null;
-        $assetKind = $this->assetKind($kind, $category);
+        $assetKind = $this->assetKind($kind, $key, $category);
         $asset = $this->assets->find($assetKind, $key)
             ?? $this->assets->placeholder($assetKind, $key);
         $level = $definition['level'] && isset($row->level) ? (int) $row->level : null;
@@ -200,10 +200,28 @@ final class ContentDirectoryService
         ];
     }
 
-    private function assetKind(string $kind, ?string $category): string
+    private function assetKind(string $kind, string $key, ?string $category): string
     {
         if ($kind !== 'item') {
             return $kind;
+        }
+
+        // The legacy items.category field can describe content origin
+        // (clan/crew/shadowwar) rather than the equipment slot. Follow the
+        // same prefix-first rule used by inventory/grant compatibility.
+        $normalizedKey = strtolower($key);
+
+        foreach ([
+            'wpn' => 'weapon',
+            'set' => 'clothing',
+            'back' => 'back',
+            'acsy' => 'accessory',
+            'accessory' => 'accessory',
+            'hair' => 'hair',
+        ] as $prefix => $assetKind) {
+            if (preg_match('/\\A'.preg_quote($prefix, '/').'(?:_|\\d)/D', $normalizedKey) === 1) {
+                return $assetKind;
+            }
         }
 
         return match (strtolower((string) $category)) {
