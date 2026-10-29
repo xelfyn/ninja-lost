@@ -4,6 +4,7 @@ namespace App\Player\Pages;
 
 use App\Models\User;
 use App\Services\Rewards\RewardService;
+use App\Services\Player\PlayerViewContract;
 use App\Support\Rewards\RewardClock;
 use App\Support\Rewards\RewardRules;
 use Filament\Notifications\Notification;
@@ -100,8 +101,10 @@ class PlayerHome extends Page
             ->orderBy('id')->limit(100)->get();
         $selected = $campaigns->firstWhere('id', (int) $this->campaignId);
         $choices = $selected ? json_decode($selected->choices, true, 32, JSON_THROW_ON_ERROR) : [];
+        $overview = $character ? app(PlayerViewContract::class)->character((int) $userId, (int) $character->id) : null;
+
         return [
-            'characters' => $characters, 'character' => $character, 'inventory' => $inventory,
+            'characters' => $characters, 'character' => $character, 'overview' => $overview, 'inventory' => $inventory,
             'tokens' => (int) DB::table('users')->where('id', $userId)->value('tokens'),
             'campaigns' => $campaigns, 'choices' => $choices,
             'history' => DB::table('nl_claims')->where('user_id', $userId)->orderByDesc('created_at')->orderByDesc('id')->limit(20)->get(),
