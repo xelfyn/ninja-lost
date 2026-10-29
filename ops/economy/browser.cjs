@@ -64,14 +64,17 @@ async function main() {
   await check(phone, '/portal/home', 'Portal Pemain'); assert.equal(await phone.getByTestId('nl-tokens').innerText(), '0');
   await login(staff, 'admin', admin); await staff.goto(`${BASE}/admin/staff-grants`, { waitUntil: 'networkidle' });
   await check(staff, '/admin/staff-grants', 'Staff Grants');
-  await staff.locator('#staff-character').fill(String(state.character)); await staff.locator('#staff-quantity').fill('37');
+  await staff.locator('#staff-character-search').fill(String(state.character));
+  await staff.getByRole('button', { name: new RegExp('#' + state.character + '$') }).click();
+  await staff.getByTestId('selected-character').waitFor();
+  await staff.locator('#staff-quantity').fill('37');
   await staff.locator('#staff-reason').fill('QA browser approved compensation');
   const requestKey = await staff.locator('#staff-request-key').innerText();
-  await staff.getByRole('button', { name: 'Terbitkan grant', exact: true }).click();
+  await staff.getByRole('button', { name: 'Issue grant', exact: true }).click();
   await staff.locator('#staff-receipt').waitFor();
   const sql = fixture('verify'); assert.equal(await staff.locator('#staff-receipt').innerText(), sql.receipt);
   assert.equal(await staff.locator('#staff-request-key').innerText(), requestKey);
-  assert.equal(await staff.getByRole('button', { name: 'Terbitkan grant', exact: true }).count(), 0);
+  assert.equal(await staff.getByRole('button', { name: 'Issue grant', exact: true }).count(), 0);
   await staff.evaluate(async () => {
     const root = document.querySelector('#staff-request-key').closest('[wire\\:id]');
     await window.Livewire.find(root.getAttribute('wire:id')).$call('grant');
@@ -86,8 +89,8 @@ async function main() {
   await check(phone, '/portal/home', 'Portal Pemain'); fixture('verify'); await proof(phone, 'g8-player-mobile');
   console.log('PASS staff-receipt-session-and-balance-survive-process-restart');
   await staff.setViewportSize({ width: 390, height: 844 }); await check(staff, '/admin/staff-grants', 'Staff Grants');
-  await staff.getByRole('button', { name: 'Grant baru', exact: true }).click();
-  await staff.getByRole('button', { name: 'Terbitkan grant', exact: true }).waitFor();
+  await staff.getByRole('button', { name: 'Start a new grant', exact: true }).click();
+  await staff.getByRole('button', { name: 'Issue grant', exact: true }).waitFor();
   assert.notEqual(await staff.locator('#staff-request-key').innerText(), requestKey); fixture('verify');
   await proof(staff, 'g8-staff-mobile'); console.log('PASS explicit-new-grant-mobile: new request identity without issuing reward');
   assert.deepEqual(errors, []); console.log('PASS g8-browser-health: identity, nonblank, no framework overlay, app errors or document overflow');
