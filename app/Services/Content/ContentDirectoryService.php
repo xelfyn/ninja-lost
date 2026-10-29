@@ -10,9 +10,9 @@ use InvalidArgumentException;
 final class ContentDirectoryService
 {
     private const CONTENT = [
-        'item' => ['table' => 'items', 'key' => 'item_id', 'level' => true],
-        'skill' => ['table' => 'skills', 'key' => 'skill_id', 'level' => true],
-        'pet' => ['table' => 'pets', 'key' => 'pet_id', 'level' => false],
+        'item' => ['table' => 'items', 'key' => 'item_id', 'level' => true, 'category' => true],
+        'skill' => ['table' => 'skills', 'key' => 'skill_id', 'level' => true, 'category' => false],
+        'pet' => ['table' => 'pets', 'key' => 'pet_id', 'level' => false, 'category' => false],
     ];
 
     public function __construct(private readonly GameAssetRegistry $assets)
@@ -77,21 +77,11 @@ final class ContentDirectoryService
 
     public function searchContent(string $kind, string $query, int $limit = 20): array
     {
-        $definition = self::CONTENT[$kind] ?? null;
-
-        if ($definition === null) {
-            throw new InvalidArgumentException('Unsupported content kind.');
-        }
-
+        $definition = $this->definition($kind);
         $query = trim($query);
         $limit = $this->limit($limit);
-        $table = $definition['table'];
-        $key = $definition['key'];
 
-        $builder = DB::table('nl_catalog as c')
-            ->leftJoin($table.' as d', 'd.'.$key, '=', 'c.content_key')
-            ->where('c.kind', $kind)
-            ->where('c.enabled', true);
+        $builder = $this->contentQuery($kind, $definition);
 
         if ($query !== '') {
             $like = '%'.$this->escapeLike($query).'%';
@@ -102,56 +92,48 @@ final class ContentDirectoryService
             });
         }
 
-        $columns = [
-            'c.content_key',
-            'c.title as catalog_title',
-            'c.source_revision',
-            'c.supply_limit',
-            'c.issued',
-            'd.name as definition_name',
-        ];
-
-        if ($definition['level']) {
-            $columns[] = 'd.level';
-        }
-
         $rows = $builder
             ->orderByRaw('COALESCE(d.name, c.title) asc')
             ->orderBy('c.content_key')
             ->limit($limit)
-            ->get($columns);
+            ->get($this->contentColumns($definition));
 
-        return $rows->map(function ($row) use ($kind, $definition) {
-            $key = (string) $row->content_key;
-            $name = trim((string) ($row->definition_name ?: $row->catalog_title ?: $key));
-            $asset = $this->assets->find($kind, $key) ?? $this->assets->placeholder($kind, $key);
-
-            return [
-                'kind' => $kind,
-                'key' => $key,
-                'name' => $name,
-                'level' => $definition['level'] && isset($row->level) ? (int) $row->level : null,
-                'source_revision' => (string) $row->source_revision,
-                'supply_limit' => $row->supply_limit === null ? null : (int) $row->supply_limit,
-                'issued' => (int) $row->issued,
-                'asset' => $asset,
-                'label' => $definition['level'] && isset($row->level)
-                    ? sprintf('%s · Lv. %d · %s', $name, (int) $row->level, $key)
-                    : sprintf('%s · %s', $name, $key),
-            ];
-        })->all();
+        return $rows
+            ->map(fn ($row) => $this->contentRow($kind, $definition, $row))
+            ->all();
     }
 
     public function content(string $kind, string $key): ?array
     {
-        $definition = self::CONTENT[$kind] ?? null;
-
-        if ($definition === null || $key === '') {
+        if ($key === '') {
             return null;
         }
 
-        $table = $definition['table'];
-        $column = $definition['key'];
+        $definition = $this->definition($kind);
+
+        $row = $this->contentQuery($kind, $definition)
+            ->where('c.content_key', $key)
+            ->first($this->contentColumns($definition));
+
+        return $row ? $this->contentRow($kind, $definition, $row) : null;
+    }
+
+    private function definition(string $kind): array
+    {
+        return self::CONTENT[$kind]
+            ?? throw new InvalidArgumentException('Unsupported content kind.');
+    }
+
+    private function contentQuery(string $kind, array $definition)
+    {
+        return DB::table('nl_catalog as c')
+            ->leftJoin($definition['table'].' as d', 'd.'.$definition['key'], '=', 'c.content_key')
+            ->where('c.kind', $kind)
+            ->where('c.enabled', true);
+    }
+
+    private function contentColumns(array $definition): array
+    {
         $columns = [
             'c.content_key',
             'c.title as catalog_title',
@@ -165,29 +147,56 @@ final class ContentDirectoryService
             $columns[] = 'd.level';
         }
 
-        $row = DB::table('nl_catalog as c')
-            ->leftJoin($table.' as d', 'd.'.$column, '=', 'c.content_key')
-            ->where('c.kind', $kind)
-            ->where('c.content_key', $key)
-            ->where('c.enabled', true)
-            ->first($columns);
-
-        if (! $row) {
-            return null;
+        if ($definition['category']) {
+            $columns[] = 'd.category as definition_category';
         }
 
+        return $columns;
+    }
+
+    private function contentRow(string $kind, array $definition, object $row): array
+    {
+        $key = (string) $row->content_key;
         $name = trim((string) ($row->definition_name ?: $row->catalog_title ?: $key));
+        $category = $definition['category'] && isset($row->definition_category)
+            ? trim((string) $row->definition_category)
+            : null;
+        $assetKind = $this->assetKind($kind, $category);
+        $asset = $this->assets->find($assetKind, $key)
+            ?? $this->assets->placeholder($assetKind, $key);
+        $level = $definition['level'] && isset($row->level) ? (int) $row->level : null;
 
         return [
             'kind' => $kind,
+            'category' => $category,
             'key' => $key,
             'name' => $name,
-            'level' => $definition['level'] && isset($row->level) ? (int) $row->level : null,
+            'level' => $level,
             'source_revision' => (string) $row->source_revision,
             'supply_limit' => $row->supply_limit === null ? null : (int) $row->supply_limit,
             'issued' => (int) $row->issued,
-            'asset' => $this->assets->find($kind, $key) ?? $this->assets->placeholder($kind, $key),
+            'asset_kind' => $assetKind,
+            'asset' => $asset,
+            'label' => $level !== null
+                ? sprintf('%s · Lv. %d · %s', $name, $level, $key)
+                : sprintf('%s · %s', $name, $key),
         ];
+    }
+
+    private function assetKind(string $kind, ?string $category): string
+    {
+        if ($kind !== 'item') {
+            return $kind;
+        }
+
+        return match (strtolower((string) $category)) {
+            'weapon', 'wpn' => 'weapon',
+            'clothing', 'set', 'bodyset', 'body_set' => 'clothing',
+            'back', 'backitem', 'back_item' => 'back',
+            'accessory', 'acsy' => 'accessory',
+            'hair' => 'hair',
+            default => 'item',
+        };
     }
 
     private function limit(int $limit): int
