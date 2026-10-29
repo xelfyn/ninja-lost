@@ -130,9 +130,9 @@ final class ContentDirectoryTest extends TestCase
         ]);
     }
 
-    private function catalog(string $kind, string $key, string $title, bool $enabled): void
+    private function catalog(string $kind, string $key, string $title, bool $enabled): int
     {
-        DB::table('nl_catalog')->insert([
+        return (int) DB::table('nl_catalog')->insertGetId([
             'kind' => $kind,
             'content_key' => $key,
             'title' => $title,
@@ -150,6 +150,14 @@ final class ContentDirectoryTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    private function catalogId(string $kind, string $key): int
+    {
+        return (int) DB::table('nl_catalog')
+            ->where('kind', $kind)
+            ->where('content_key', $key)
+            ->value('id');
     }
 
     public function test_character_search_is_human_readable_and_does_not_expose_email(): void
@@ -178,6 +186,7 @@ final class ContentDirectoryTest extends TestCase
         $rows = app(ContentDirectoryService::class)->searchContent('skill', 'Lightning');
 
         $this->assertCount(1, $rows);
+        $this->assertSame($this->catalogId('skill', 'skill_1'), $rows[0]['catalog_id']);
         $this->assertSame('skill_1', $rows[0]['key']);
         $this->assertSame('Lightning Edge', $rows[0]['name']);
         $this->assertSame(5, $rows[0]['level']);
@@ -218,7 +227,7 @@ final class ContentDirectoryTest extends TestCase
             ->set('rewardType', 'skill')
             ->set('contentSearch', 'Lightning')
             ->assertSee('Lightning Edge')
-            ->call('selectContent', 'skill_1')
+            ->call('selectContent', $this->catalogId('skill', 'skill_1'))
             ->assertSet('contentKey', 'skill_1')
             ->set('quantity', '1')
             ->set('reason', 'Evaluation selector grant')
@@ -249,7 +258,7 @@ final class ContentDirectoryTest extends TestCase
         $component = Livewire::test(StaffGrants::class)
             ->call('selectCharacter', $this->character->id)
             ->set('rewardType', 'skill')
-            ->call('selectContent', 'skill_1')
+            ->call('selectContent', $this->catalogId('skill', 'skill_1'))
             ->set('quantity', '1')
             ->set('reason', 'Evaluation stale selection');
 
