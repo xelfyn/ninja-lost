@@ -67,3 +67,25 @@ A later promotion command will require:
 Only then may `GameAssetRegistry` expose a reviewed web derivative.
 
 Character visuals are a separate composition problem: original appearance pieces must be resolved and rendered together. A single equipment icon or skill animation is never treated as a character render.
+
+## Promote one reviewed derivative
+
+After you have inspected an extracted image and confirmed that it represents the intended original game content, promote it explicitly:
+
+```bash
+python3 ops/assets/promote_asset.py \
+  --extraction-root storage/app/ninja-lost/assets/extracted/skill-icon-1-10 \
+  --derivative storage/app/ninja-lost/assets/extracted/skill-icon-1-10/<reviewed-file>.png \
+  --public-root public/game-assets \
+  --manifest storage/app/ninja-lost/assets/manifest.json \
+  --kind skill \
+  --source-id skill_1 \
+  --source-type ninja-saga-swf \
+  --source-ref swf/library/icons/skill_icon_1-10.swf \
+  --status verified
+```
+
+The destination filename is generated from the content identity. Existing identities are refused unless `--replace` is supplied deliberately after review. Promotion records the derivative hash and does not modify inventory, mechanics, balances, ownership, or active game content.
+
+Do not mark an asset `verified` merely because extraction succeeded. Verification means a human confirmed that the selected derivative matches the intended content identity.
+
