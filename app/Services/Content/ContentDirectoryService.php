@@ -21,7 +21,7 @@ final class ContentDirectoryService
 
     public function searchCharacters(string $query, int $limit = 20): array
     {
-        $query = trim($query);
+        $query = $this->query($query);
         $limit = $this->limit($limit);
 
         $rows = DB::table('characters as c')
@@ -78,7 +78,7 @@ final class ContentDirectoryService
     public function searchContent(string $kind, string $query, int $limit = 20): array
     {
         $definition = $this->definition($kind);
-        $query = trim($query);
+        $query = $this->query($query);
         $limit = $this->limit($limit);
 
         $builder = $this->contentQuery($kind, $definition);
@@ -197,6 +197,11 @@ final class ContentDirectoryService
             'hair' => 'hair',
             default => 'item',
         };
+    }
+
+    private function query(string $query): string
+    {
+        return mb_substr(trim($query), 0, 100);
     }
 
     private function limit(int $limit): int
