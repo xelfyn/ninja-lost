@@ -14,6 +14,7 @@
                         id="staff-character-search"
                         wire:model.live.debounce.300ms="characterSearch"
                         autocomplete="off"
+                        maxlength="100"
                         placeholder="Search character name, username, or character ID"
                         :disabled="$receiptId !== ''"
                     />
@@ -73,6 +74,7 @@
                             id="staff-content-search"
                             wire:model.live.debounce.300ms="contentSearch"
                             autocomplete="off"
+                            maxlength="100"
                             placeholder="Search {{ ucfirst($rewardType) }} by name or source ID"
                             :disabled="$receiptId !== ''"
                         />
